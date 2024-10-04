@@ -22,7 +22,7 @@ class HashProgress:
                                         "{task.completed} Files")
         self.match_progress = Progress("[progress.description]{task.description}",
                                        BarColumn(bar_width=None),
-                                       "{task.completed} of {task.total} Files")
+                                       "{task.completed}")
 
         self.current_hashing_text = Progress("{task.description}")
 
