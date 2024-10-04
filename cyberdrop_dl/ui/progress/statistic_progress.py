@@ -3,6 +3,7 @@ from typing import Dict, Union
 from rich.console import Group
 from rich.panel import Panel
 from rich.progress import Progress, BarColumn, TaskID
+from cyberdrop_dl.utils.utilities import log
 
 
 class DownloadStatsProgress:
@@ -10,20 +11,23 @@ class DownloadStatsProgress:
 
     def __init__(self):
         self.progress = Progress("[progress.description]{task.description}",
-                                BarColumn(bar_width=None),
-                                "[progress.percentage]{task.percentage:>3.2f}%",
-                                "{task.completed} of {task.total} Files")
+                                 BarColumn(bar_width=None),
+                                 "[progress.percentage]{task.percentage:>6.2f}%",
+                                 "━",
+                                 "{task.completed}")
         self.progress_group = Group(self.progress)
 
         self.failure_types: Dict[str, TaskID] = {}
         self.failed_files = 0
+        self.panel = Panel(self.progress_group, title="Download Failures", border_style="green", padding=(1, 1), subtitle = f"Total Download Failures: {self.failed_files}")
 
     async def get_progress(self) -> Panel:
         """Returns the progress bar"""
-        return Panel(self.progress_group, title="Download Failures", border_style="green", padding=(1, 1))
+        return self.panel
 
     async def update_total(self, total: int) -> None:
-        """Updates the total number of files to be downloaded"""
+        """Updates the total number download failures"""
+        self.panel.subtitle = f"Total Download Failures: {self.failed_files}"
         for key in self.failure_types:
             self.progress.update(self.failure_types[key], total=total)
 
@@ -53,20 +57,23 @@ class ScrapeStatsProgress:
 
     def __init__(self):
         self.progress = Progress("[progress.description]{task.description}",
-                                BarColumn(bar_width=None),
-                                "[progress.percentage]{task.percentage:>3.2f}%",
-                                "{task.completed} of {task.total} Files")
+                                 BarColumn(bar_width=None),
+                                 "[progress.percentage]{task.percentage:>6.2f}%",
+                                 "━",
+                                 "{task.completed}")
         self.progress_group = Group(self.progress)
 
         self.failure_types: Dict[str, TaskID] = {}
         self.failed_files = 0
+        self.panel = Panel(self.progress_group, title="Scrape Failures", border_style="green", padding=(1, 1), subtitle = f"Total Scrape Failures: {self.failed_files}")
 
     async def get_progress(self) -> Panel:
         """Returns the progress bar"""
-        return Panel(self.progress_group, title="Scrape Failures", border_style="green", padding=(1, 1))
+        return self.panel
 
     async def update_total(self, total: int) -> None:
-        """Updates the total number of sites to be scraped"""
+        """Updates the total number of scrape failures"""
+        self.panel.subtitle = f"Total Scrape Failures: {self.failed_files}"
         for key in self.failure_types:
             self.progress.update(self.failure_types[key], total=total)
 

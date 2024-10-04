@@ -20,9 +20,9 @@ class SortProgress:
         self.manager = manager
         # Sorter to track the progress of folders being sorted, should work similar to the file_progress but for folders, with a percentage and progress bar for the files within the folders
         self.progress = Progress(SpinnerColumn(), "[progress.description]{task.description}",
-                                BarColumn(bar_width=None), "[progress.percentage]{task.percentage:>3.2f}%",
-                                "━", "{task.completed}/{task.total} files"
-                                )
+                                 BarColumn(bar_width=None), "[progress.percentage]{task.percentage:>6.2f}%",
+                                 "━", "{task.completed}/{task.total} files"
+                                 )
         self.overflow = Progress("[progress.description]{task.description}")
         self.queue = Progress("[progress.description]{task.description}")
         self.progress_group = Group(self.progress, self.overflow, self.queue)

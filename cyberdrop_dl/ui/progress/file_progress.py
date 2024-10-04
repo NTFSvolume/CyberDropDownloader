@@ -21,15 +21,15 @@ class FileProgress:
         self.manager = manager
 
         self.progress = Progress(SpinnerColumn(),
-                                "[progress.description]{task.description}",
-                                BarColumn(bar_width=None),
-                                "[progress.percentage]{task.percentage:>3.2f}%",
-                                "━",
-                                DownloadColumn(),
-                                "━",
-                                TransferSpeedColumn(),
-                                "━",
-                                TimeRemainingColumn())
+                                 "[progress.description]{task.description}",
+                                 BarColumn(bar_width=None),
+                                 "[progress.percentage]{task.percentage:>6.2f}%",
+                                 "━",
+                                 DownloadColumn(),
+                                 "━",
+                                 TransferSpeedColumn(),
+                                 "━",
+                                 TimeRemainingColumn())
         self.overflow = Progress("[progress.description]{task.description}")
         self.queue = Progress("[progress.description]{task.description}")
         self.progress_group = Group(self.progress, self.overflow, self.queue)
