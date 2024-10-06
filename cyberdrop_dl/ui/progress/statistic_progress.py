@@ -73,8 +73,9 @@ class DownloadStatsProgress:
     async def return_totals(self) -> Dict:
         """Returns the total number of failed files"""
         failures = {}
-        for key, value in self.failure_types.items():
-            failures[key] = self.progress.tasks[value].completed
+        for failure_type, task_id in self.failure_types.items():
+            task = next(task for task in self.progress.tasks if task.id == task_id)
+            failures[failure_type] = task.completed
         return dict(sorted(failures.items()))
 
 
@@ -128,6 +129,7 @@ class ScrapeStatsProgress:
     async def return_totals(self) -> Dict:
         """Returns the total number of failed sites and reasons"""
         failures = {}
-        for key, value in self.failure_types.items():
-            failures[key] = self.progress.tasks[value].completed
+        for failure_type, task_id in self.failure_types.items():
+            task = next(task for task in self.progress.tasks if task.id == task_id)
+            failures[failure_type] = task.completed
         return dict(sorted(failures.items()))
