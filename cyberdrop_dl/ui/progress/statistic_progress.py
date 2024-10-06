@@ -40,7 +40,7 @@ class DownloadStatsProgress:
 
         self.failure_types: Dict[str, TaskID] = {}
         self.failed_files = 0
-        self.panel = Panel(self.progress_group, title="Download Failures", border_style="green", padding=(1, 1), subtitle = f"Total Download Failures: {self.failed_files}")
+        self.panel = Panel(self.progress_group, title="Download Failures", border_style="green", padding=(1, 1), subtitle = f"Total Download Failures: [white]{self.failed_files}")
 
     async def get_progress(self) -> Panel:
         """Returns the progress bar"""
@@ -48,7 +48,7 @@ class DownloadStatsProgress:
 
     async def update_total(self, total: int) -> None:
         """Updates the total number download failures"""
-        self.panel.subtitle = f"Total Download Failures: {self.failed_files}"
+        self.panel.subtitle = f"Total Download Failures: [white]{self.failed_files}"
         for key in self.failure_types:
             self.progress.update(self.failure_types[key], total=total)
         
@@ -97,7 +97,7 @@ class ScrapeStatsProgress:
 
         self.failure_types: Dict[str, TaskID] = {}
         self.failed_files = 0
-        self.panel = Panel(self.progress_group, title="Scrape Failures", border_style="green", padding=(1, 1), subtitle = f"Total Scrape Failures: {self.failed_files}")
+        self.panel = Panel(self.progress_group, title="Scrape Failures", border_style="green", padding=(1, 1), subtitle = f"Total Scrape Failures: [white]{self.failed_files}")
 
     async def get_progress(self) -> Panel:
         """Returns the progress bar"""
@@ -105,7 +105,7 @@ class ScrapeStatsProgress:
 
     async def update_total(self, total: int) -> None:
         """Updates the total number of scrape failures"""
-        self.panel.subtitle = f"Total Scrape Failures: {self.failed_files}"
+        self.panel.subtitle = f"Total Scrape Failures: [white]{self.failed_files}"
         for key in self.failure_types:
             self.progress.update(self.failure_types[key], total=total)
 
