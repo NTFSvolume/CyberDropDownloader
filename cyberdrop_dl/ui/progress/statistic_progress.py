@@ -1,12 +1,17 @@
-from typing import Dict, Union
+from typing import Dict, Union, NamedTuple
 
 from rich.console import Group
 from rich.panel import Panel
 from rich.progress import Progress, BarColumn, TaskID
 from cyberdrop_dl.utils.utilities import log
-from cyberdrop_dl.ui.progress import TaskInfo
+class TaskInfo(NamedTuple):
+    id: int
+    description: str
+    completed: int
+    total: int
+    progress: float
 
-async def get_task_info_sorted(progress: Progress):
+async def get_tasks_info_sorted(progress: Progress):
     tasks = [
         TaskInfo(
             id=task.id,
@@ -48,7 +53,7 @@ class DownloadStatsProgress:
             self.progress.update(self.failure_types[key], total=total)
         
         # Sort tasks on UI
-        tasks_sorted = await get_task_info_sorted(self.progress)
+        tasks_sorted = await get_tasks_info_sorted(self.progress)
 
         for task_id in [task.id for task in tasks_sorted]:
             self.progress.remove_task(task_id)
@@ -105,7 +110,7 @@ class ScrapeStatsProgress:
             self.progress.update(self.failure_types[key], total=total)
 
         # Sort tasks on UI
-        tasks_sorted = await get_task_info_sorted(self.progress)
+        tasks_sorted = await get_tasks_info_sorted(self.progress)
 
         for task_id in [task.id for task in tasks_sorted]:
             self.progress.remove_task(task_id)
