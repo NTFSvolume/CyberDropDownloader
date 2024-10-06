@@ -3,7 +3,6 @@ from typing import Dict, Union, NamedTuple
 from rich.console import Group
 from rich.panel import Panel
 from rich.progress import Progress, BarColumn, TaskID
-from cyberdrop_dl.utils.utilities import log
 class TaskInfo(NamedTuple):
     id: int
     description: str
@@ -11,7 +10,7 @@ class TaskInfo(NamedTuple):
     total: int
     progress: float
 
-async def get_tasks_info_sorted(progress: Progress):
+async def get_tasks_info_sorted(progress: Progress) -> tuple:
     tasks = [
         TaskInfo(
             id=task.id,
@@ -25,7 +24,9 @@ async def get_tasks_info_sorted(progress: Progress):
 
     tasks_sorted = sorted(tasks, key=lambda x: x.completed, reverse=True)
 
-    return tasks_sorted
+    were_sorted = tasks == tasks_sorted
+
+    return tasks_sorted, were_sorted
 
 class DownloadStatsProgress:
     """Class that keeps track of download failures and reasons"""
@@ -51,15 +52,16 @@ class DownloadStatsProgress:
         self.panel.subtitle = f"Total Download Failures: [white]{self.failed_files}"
         for key in self.failure_types:
             self.progress.update(self.failure_types[key], total=total)
-        
+
         # Sort tasks on UI
-        tasks_sorted = await get_tasks_info_sorted(self.progress)
+        tasks_sorted, were_sorted = await get_tasks_info_sorted(self.progress)
+        
+        if not were_sorted:
+            for task_id in [task.id for task in tasks_sorted]:
+                self.progress.remove_task(task_id)
 
-        for task_id in [task.id for task in tasks_sorted]:
-            self.progress.remove_task(task_id)
-
-        for task in tasks_sorted:
-            self.failure_types[task.description] = self.progress.add_task(task.description, total=task.total, completed=task.completed)
+            for task in tasks_sorted:
+                self.failure_types[task.description] = self.progress.add_task(task.description, total=task.total, completed=task.completed)
 
 
     async def add_failure(self, failure_type: Union[str, int]) -> None:
@@ -110,13 +112,14 @@ class ScrapeStatsProgress:
             self.progress.update(self.failure_types[key], total=total)
 
         # Sort tasks on UI
-        tasks_sorted = await get_tasks_info_sorted(self.progress)
+        tasks_sorted, were_sorted = await get_tasks_info_sorted(self.progress)
 
-        for task_id in [task.id for task in tasks_sorted]:
-            self.progress.remove_task(task_id)
+        if not were_sorted:
+            for task_id in [task.id for task in tasks_sorted]:
+                self.progress.remove_task(task_id)
 
-        for task in tasks_sorted:
-            self.failure_types[task.description] = self.progress.add_task(task.description, total=task.total, completed=task.completed)
+            for task in tasks_sorted:
+                self.failure_types[task.description] = self.progress.add_task(task.description, total=task.total, completed=task.completed)
 
     async def add_failure(self, failure_type: Union[str, int]) -> None:
         """Adds a failed site to the progress bar"""
