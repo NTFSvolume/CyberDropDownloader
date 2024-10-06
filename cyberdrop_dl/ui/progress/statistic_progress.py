@@ -4,7 +4,7 @@ from rich.console import Group
 from rich.panel import Panel
 from rich.progress import Progress, BarColumn, TaskID
 from cyberdrop_dl.utils.utilities import log
-
+from cyberdrop_dl.ui.progress import TaskInfo
 
 class DownloadStatsProgress:
     """Class that keeps track of download failures and reasons"""
@@ -30,6 +30,27 @@ class DownloadStatsProgress:
         self.panel.subtitle = f"Total Download Failures: {self.failed_files}"
         for key in self.failure_types:
             self.progress.update(self.failure_types[key], total=total)
+        
+        # Sort tasks on UI
+        tasks = [
+            TaskInfo(
+                id=task.id,
+                description=task.description,
+                completed=task.completed,
+                total=task.total,
+                progress=(task.completed / task.total if task.total else 0)
+            )
+            for task in self.progress.tasks
+        ]
+
+        for task_id in [task.id for task in tasks]:
+            self.progress.remove_task(task_id)
+
+        tasks_sorted = sorted(tasks, key=lambda x: x.completed, reverse=True)
+
+        for task in tasks_sorted:
+            self.failure_types[task.description] = self.progress.add_task(task.description, total=task.total, completed=task.completed)
+
 
     async def add_failure(self, failure_type: Union[str, int]) -> None:
         """Adds a failed file to the progress bar"""
@@ -76,6 +97,28 @@ class ScrapeStatsProgress:
         self.panel.subtitle = f"Total Scrape Failures: {self.failed_files}"
         for key in self.failure_types:
             self.progress.update(self.failure_types[key], total=total)
+
+
+        # Sort tasks on UI
+        tasks = [
+            TaskInfo(
+                id=task.id,
+                description=task.description,
+                completed=task.completed,
+                total=task.total,
+                progress=(task.completed / task.total if task.total else 0)
+            )
+            for task in self.progress.tasks
+        ]
+
+        for task_id in [task.id for task in tasks]:
+            self.progress.remove_task(task_id)
+
+        tasks_sorted = sorted(tasks, key=lambda x: x.completed, reverse=True)
+
+        for task in tasks_sorted:
+            self.failure_types[task.description] = self.progress.add_task(task.description, total=task.total, completed=task.completed)
+
 
     async def add_failure(self, failure_type: Union[str, int]) -> None:
         """Adds a failed site to the progress bar"""
