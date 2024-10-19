@@ -481,7 +481,7 @@ class ScrapeMapper:
 
         elif self.manager.real_debrid_manager.enabled and await self.manager.real_debrid_manager.is_supported(scrape_item.url):
             await log(f"Using RealDebrid for unsupported URL: {scrape_item.url}", 10)
-            self.manager.task_group.create_task(self.realdebrid.run(scrape_item))
+            self.manager.task_group.create_task(self.existing_crawlers['realdebrid'].run(scrape_item))
 
         elif self.jdownloader.enabled:
             await log(f"Sending unsupported URL to JDownloader: {scrape_item.url}", 10)
@@ -558,7 +558,7 @@ class ScrapeMapper:
 
         elif self.manager.real_debrid_manager.enabled and await self.manager.real_debrid_manager.is_supported(scrape_item.url):
             await log(f"Using RealDebrid for unsupported URL: {scrape_item.url}", 10)
-            self.manager.task_group.create_task(self.realdebrid.run(scrape_item))
+            self.manager.task_group.create_task(self.existing_crawlers['realdebrid'].run(scrape_item))
 
         elif self.jdownloader.enabled:
             await log(f"Sending unsupported URL to JDownloader: {scrape_item.url}", 10)
