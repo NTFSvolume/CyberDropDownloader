@@ -87,6 +87,30 @@ class DownloadClient:
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
+    async def _download_yt_dlp(self, domain: str, manager: Manager, media_item: MediaItem) -> bool:
+        """Downloads a file with yt-dlp"""
+
+        await asyncio.sleep(self.client_manager.download_delay)
+        if not isinstance(media_item.complete_file, Path):
+            proceed, skip = await self.get_final_file_info(media_item, domain)
+            await self.mark_incomplete(media_item, domain)
+            if skip:
+                await self.manager.progress_manager.download_progress.add_skipped()
+                return False
+            if not proceed:
+                await log(f"Skipping {media_item.url} as it has already been downloaded", 10)
+                await self.manager.progress_manager.download_progress.add_previously_completed(False)
+                await self.process_completed(media_item, domain)
+                await self.handle_media_item_completion(media_item, downloaded=False)
+
+                return False
+
+        media_item.task_id = await self.manager.progress_manager.file_progress.add_task(
+            f"({domain.upper()}) {media_item.filename}", media_item.filesize
+        )
+
+        return True
+
     def add_api_key_headers(self, domain: str, referer: URL) -> dict:
         download_headers = copy.deepcopy(self._headers)
         download_headers["Referer"] = str(referer)
