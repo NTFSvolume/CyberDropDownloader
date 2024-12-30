@@ -37,8 +37,10 @@ send2trash = "^1.8.3"
 xxhash = "^3.5.0"
 
 [tool.poetry.group.dev.dependencies]
+lxml = "5.2.2"
 pre-commit = "^4.0.1"
 ruff = "^0.8.0"
+snakeviz = "^2.2.2"
 
 [tool.poetry.scripts]
 cyberdrop-dl = "cyberdrop_dl.main:main"
