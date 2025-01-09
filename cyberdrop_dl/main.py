@@ -31,7 +31,7 @@ logger_startup = logging.getLogger("cyberdrop_dl_startup")
 LOGGER_STARTUP_FILE = Path().cwd().joinpath("downloader.log")
 
 
-def startup() -> Manager:
+def startup() -> Manager | None:
     """Starts the program and returns the manager.
 
     This will also run the UI for the program
@@ -184,7 +184,7 @@ def setup_logger(manager: Manager, config_name: str) -> None:
     logger.addHandler(rich_handler)
 
 
-def ui_error_handling_wrapper(func: Callable) -> None:
+def ui_error_handling_wrapper(func: Callable) -> Callable:
     """Wrapper handles errors from the main UI."""
 
     @wraps(func)
