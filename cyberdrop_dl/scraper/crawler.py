@@ -121,12 +121,16 @@ class Crawler(ABC):
             original_filename,
             debrid_link,
         )
+        await self.handle_media_item(media_item)
 
-        check_complete = await self.manager.db_manager.history_table.check_complete(self.domain, url, scrape_item.url)
+    async def handle_media_item(self, media_item: MediaItem) -> None:
+        check_complete = await self.manager.db_manager.history_table.check_complete(
+            self.domain, media_item.url, media_item.referer
+        )
         if check_complete:
             if media_item.album_id:
                 await self.manager.db_manager.history_table.set_album_id(self.domain, media_item)
-            log(f"Skipping {url} as it has already been downloaded", 10)
+            log(f"Skipping {media_item.url} as it has already been downloaded", 10)
             self.manager.progress_manager.download_progress.add_previously_completed()
             return
 
