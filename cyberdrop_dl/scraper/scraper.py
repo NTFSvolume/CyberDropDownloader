@@ -260,44 +260,44 @@ class ScrapeMapper:
             return
 
         if has_valid_extension(scrape_item.url):
-            if await self.skip_no_crawler_by_config(scrape_item):
-                return
-
-            scrape_item.add_to_parent_title("Loose Files")
-            scrape_item.part_of_album = True
-            download_folder = get_download_path(self.manager, scrape_item, "no_crawler")
-            filename, _ = get_filename_and_ext(scrape_item.url.name)
-            media_item = MediaItem(scrape_item.url, scrape_item, download_folder, filename)
-            self.manager.task_group.create_task(self.no_crawler_downloader.run(media_item))
-            return
+            return await self.send_to_generic_crawler(scrape_item)
 
         if self.jdownloader.enabled and jdownloader_whitelisted:
-            log(f"Sending unsupported URL to JDownloader: {scrape_item.url}", 10)
-            success = False
-            try:
-                download_folder = get_download_path(self.manager, scrape_item, "jdownloader")
-                relative_download_dir = download_folder.relative_to(self.manager.path_manager.download_folder)
-                self.jdownloader.direct_unsupported_to_jdownloader(
-                    scrape_item.url,
-                    scrape_item.parent_title,
-                    relative_download_dir,
-                )
-                success = True
-            except JDownloaderError as e:
-                log(f"Failed to send {scrape_item.url} to JDownloader\n{e.message}", 40)
-                await self.manager.log_manager.write_unsupported_urls_log(
-                    scrape_item.url,
-                    scrape_item.parents[0] if scrape_item.parents else None,
-                )
-            self.manager.progress_manager.scrape_stats_progress.add_unsupported(sent_to_jdownloader=success)
-            return
+            return await self.send_to_jdownloader(scrape_item)
 
         log(f"Unsupported URL: {scrape_item.url}", 30)
-        await self.manager.log_manager.write_unsupported_urls_log(
-            scrape_item.url,
-            scrape_item.parents[0] if scrape_item.parents else None,
-        )
+        origin = scrape_item.parents[0] if scrape_item.parents else None
+        await self.manager.log_manager.write_unsupported_urls_log(scrape_item.url, origin)
         self.manager.progress_manager.scrape_stats_progress.add_unsupported()
+
+    async def send_to_generic_crawler(self, scrape_item: ScrapeItem) -> None:
+        if await self.skip_no_crawler_by_config(scrape_item):
+            return
+
+        scrape_item.add_to_parent_title("Loose Files")
+        scrape_item.part_of_album = True
+        download_folder = get_download_path(self.manager, scrape_item, "no_crawler")
+        filename, _ = get_filename_and_ext(scrape_item.url.name)
+        media_item = MediaItem(scrape_item.url, scrape_item, download_folder, filename)
+        self.manager.task_group.create_task(self.no_crawler_downloader.run(media_item))
+
+    async def send_to_jdownloader(self, scrape_item: ScrapeItem) -> None:
+        log(f"Sending unsupported URL to JDownloader: {scrape_item.url}", 10)
+        success = False
+        try:
+            download_folder = get_download_path(self.manager, scrape_item, "jdownloader")
+            relative_download_dir = download_folder.relative_to(self.manager.path_manager.download_folder)
+            self.jdownloader.direct_unsupported_to_jdownloader(
+                scrape_item.url,
+                scrape_item.parent_title,
+                relative_download_dir,
+            )
+            success = True
+        except JDownloaderError as e:
+            log(f"Failed to send {scrape_item.url} to JDownloader\n{e.message}", 40)
+            origin = scrape_item.parents[0] if scrape_item.parents else None
+            await self.manager.log_manager.write_unsupported_urls_log(scrape_item.url, origin)
+        self.manager.progress_manager.scrape_stats_progress.add_unsupported(sent_to_jdownloader=success)
 
     def filter_items(self, scrape_item: ScrapeItem) -> bool:
         """Pre-filter scrape items base on URL."""
