@@ -12,6 +12,8 @@ from cyberdrop_dl.utils.constants import FILE_FORMATS
 from cyberdrop_dl.utils.utilities import get_filename_and_ext
 
 if TYPE_CHECKING:
+    from datetime import date
+
     from aiohttp import ClientResponse
 
     from cyberdrop_dl.utils.data_enums_classes.url_objects import ScrapeItem
@@ -37,7 +39,7 @@ def is_valid_url(scrape_item: ScrapeItem) -> bool:
     return True
 
 
-def is_outside_date_range(scrape_item: ScrapeItem, before: arrow, after: arrow) -> bool:
+def is_outside_date_range(scrape_item: ScrapeItem, before: date | None, after: date | None) -> bool:
     skip = False
     item_date = scrape_item.completed_at or scrape_item.created_at
     if not item_date:

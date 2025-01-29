@@ -305,23 +305,16 @@ class ScrapeMapper:
             return False
 
         if is_in_domain_list(scrape_item, BLOCKED_DOMAINS):
-            log(f"Skipping {scrape_item.url} as it is a blocked domain", 10)
+            log(f"Skipping URL as it is a blocked domain: {scrape_item.url}", 10)
             return False
 
         before = self.manager.parsed_args.cli_only_args.completed_before
         after = self.manager.parsed_args.cli_only_args.completed_after
         if is_outside_date_range(scrape_item, before, after):
-            log(f"Skipping {scrape_item.url} as it is outside of the desired date range", 10)
+            log(f"Skipping URL as it is outside of the desired date range: {scrape_item.url}", 10)
             return False
 
-        skip_hosts = self.manager.config_manager.settings_data.ignore_options.skip_hosts
-        if skip_hosts and is_in_domain_list(scrape_item, skip_hosts):
-            log(f"Skipping URL by skip_hosts config: {scrape_item.url}", 10)
-            return False
-
-        only_hosts = self.manager.config_manager.settings_data.ignore_options.only_hosts
-        if only_hosts and not is_in_domain_list(scrape_item, only_hosts):
-            log(f"Skipping URL by only_hosts config: {scrape_item.url}", 10)
+        if self.skip_by_host(scrape_item):
             return False
 
         return True
@@ -337,14 +330,39 @@ class ScrapeMapper:
             self.manager.progress_manager.download_progress.add_previously_completed()
             return True
 
-        posible_referer = scrape_item.parents[-1] if scrape_item.parents else scrape_item.url
-        check_referer = False
-        if self.manager.config_manager.settings_data.download_options.skip_referer_seen_before:
-            check_referer = await self.manager.db_manager.temp_referer_table.check_referer(posible_referer)
-
-        if check_referer:
-            log(f"Skipping {scrape_item.url} as referer has been seen before", 10)
+        if await self.skip_by_referer(scrape_item):
             self.manager.progress_manager.download_progress.add_skipped()
             return True
 
+        return False
+
+    def skip_by_host(self, item: ScrapeItem | MediaItem) -> bool:
+        assert item.url.host
+        settings = self.manager.config_manager.settings_data
+        skip_hosts = settings.ignore_options.skip_hosts
+        title: str = "URL" if isinstance(item, ScrapeItem) else "download"
+        if skip_hosts and any(host in item.url.host for host in skip_hosts):
+            log(f"Skipping {title} due to skip_hosts config: {item.url}", 10)
+            return True
+
+        only_hosts = settings.ignore_options.only_hosts
+        if only_hosts and not any(host in item.url.host for host in only_hosts):
+            log(f"Skipping {title} due to only_hosts config: {item.url}", 10)
+            return True
+        return False
+
+    async def skip_by_referer(self, item: ScrapeItem | MediaItem) -> bool:
+        settings = self.manager.config_manager.settings_data
+        if not settings.download_options.skip_referer_seen_before:
+            return False
+
+        title: str = "URL" if isinstance(item, ScrapeItem) else "download"
+        if isinstance(item, ScrapeItem):
+            referer = item.parents[-1] if item.parents else item.url
+        else:
+            referer = item.referer
+
+        if await self.manager.db_manager.temp_referer_table.check_referer(referer):
+            log(f"Skipping {title} as referer has been seen before: {item.url}", 10)
+            return True
         return False

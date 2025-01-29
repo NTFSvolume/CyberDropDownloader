@@ -143,29 +143,17 @@ class Crawler(ABC):
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
     async def check_skip_by_config(self, media_item: MediaItem) -> bool:
-        settings = self.manager.config_manager.settings_data
-        if (
-            settings.download_options.skip_referer_seen_before
-            and await self.manager.db_manager.temp_referer_table.check_referer(media_item.referer)
-        ):
-            log(f"Download skip {media_item.url} as referer has been seen before", 10)
+        if self.manager.scrape_mapper.skip_by_host(media_item):
             return True
 
-        skip_hosts = settings.ignore_options.skip_hosts
-        if skip_hosts and any(host in media_item.url.host for host in skip_hosts):
-            log(f"Download skip {media_item.url} due to skip_hosts config", 10)
-            return True
-
-        only_hosts = settings.ignore_options.only_hosts
-        if only_hosts and not any(host in media_item.url.host for host in only_hosts):
-            log(f"Download skip {media_item.url} due to only_hosts config", 10)
+        if await self.manager.scrape_mapper.skip_by_referer(media_item):
             return True
 
         valid_regex_filter = self.manager.config_manager.valid_filename_filter_regex
         regex_filter = self.manager.config_manager.settings_data.ignore_options.filename_regex_filter
 
         if valid_regex_filter and re.search(regex_filter, media_item.filename):
-            log(f"Download skip {media_item.url} due to filename regex filter config", 10)
+            log(f"Skipping download due to filename regex filter config: {media_item.url}", 10)
             return True
 
         return False
