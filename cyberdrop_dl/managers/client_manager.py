@@ -12,7 +12,7 @@ from typing import TYPE_CHECKING, Any
 
 import aiohttp
 import certifi
-from aiohttp import ClientResponse, ClientSession, ContentTypeError
+from aiohttp import ClientResponse, ContentTypeError
 from aiolimiter import AsyncLimiter
 from bs4 import BeautifulSoup
 from yarl import URL
@@ -24,6 +24,8 @@ from cyberdrop_dl.managers.download_speed_manager import DownloadSpeedLimiter
 from cyberdrop_dl.ui.prompts.user_prompts import get_cookies_from_browsers
 from cyberdrop_dl.utils.constants import CustomHTTPStatus
 from cyberdrop_dl.utils.logger import log, log_spacer
+
+from .flaresolverr import Flaresolverr
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -104,7 +106,7 @@ class ClientManager:
         self.scraper_session = ScraperClient(self)
         self.downloader_session = DownloadClient(manager, self)
         self.speed_limiter = DownloadSpeedLimiter(manager)
-        self.flaresolverr = Flaresolverr(self)
+        self.flaresolverr = Flaresolverr(manager)
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
