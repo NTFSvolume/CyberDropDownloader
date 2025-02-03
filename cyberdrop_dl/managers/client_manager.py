@@ -1,56 +1,28 @@
 from __future__ import annotations
 
 import asyncio
-import contextlib
 import ssl
 from contextlib import asynccontextmanager
 from functools import wraps
 from dataclasses import dataclass
-from http import HTTPStatus
 from http.cookiejar import MozillaCookieJar
 from typing import TYPE_CHECKING
 
 import aiohttp
 import certifi
-from aiohttp import ClientResponse, ContentTypeError
 from aiolimiter import AsyncLimiter
-from bs4 import BeautifulSoup
 from yarl import URL
 
-from cyberdrop_dl.clients.errors import DDOSGuardError, DownloadError, ScrapeError
 from cyberdrop_dl.clients.http.download_client import DownloadClient
 from cyberdrop_dl.clients.http.scraper_client import ScraperClient
 from cyberdrop_dl.managers.download_speed_manager import DownloadSpeedLimiter
+from cyberdrop_dl.managers.flaresolverr import Flaresolverr
 from cyberdrop_dl.ui.prompts.user_prompts import get_cookies_from_browsers
-from cyberdrop_dl.utils.constants import CustomHTTPStatus
 from cyberdrop_dl.utils.logger import log, log_spacer
-
-from .flaresolverr import Flaresolverr
 
 if TYPE_CHECKING:
     from cyberdrop_dl.managers.manager import Manager
-    from cyberdrop_dl.scraper.crawler import Crawler, ScrapeItem
-
-DOWNLOAD_ERROR_ETAGS = {
-    "d835884373f4d6c8f24742ceabe74946": "Imgur image has been removed",
-    "65b7753c-528a": "SC Scrape Image",
-    "5c4fb843-ece": "PixHost Removed Image",
-}
-
-
-CLOUDFLARE_CHALLENGE_TITLES = ["Simpcity Cuck Detection", "Attention Required! | Cloudflare"]
-CLOUDFLARE_CHALLENGE_SELECTORS = ["captchawrapper", "cf-turnstile"]
-DDOS_GUARD_CHALLENGE_TITLES = ["Just a moment...", "DDoS-Guard"]
-DDOS_GUARD_CHALLENGE_SELECTORS = [
-    "#cf-challenge-running",
-    ".ray_id",
-    ".attack-box",
-    "#cf-please-wait",
-    "#challenge-spinner",
-    "#trk_jschal_js",
-    "#turnstile-wrapper",
-    ".lds-ring",
-]
+    from cyberdrop_dl.scraper.crawler import Crawler
 
 
 class ClientManager:
@@ -104,19 +76,6 @@ class ClientManager:
         await self.flaresolverr._destroy_session()
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
-
-    @staticmethod
-    def check_bunkr_maint(headers: dict):
-        if headers.get("Content-Length") == "322509" and headers.get("Content-Type") == "video/mp4":
-            raise DownloadError(status="Bunkr Maintenance", message="Bunkr under maintenance")
-
-    @staticmethod
-    def check_ddos_guard(soup: BeautifulSoup) -> bool:
-        return check_soup(soup, DDOS_GUARD_CHALLENGE_TITLES, DDOS_GUARD_CHALLENGE_SELECTORS)
-
-    @staticmethod
-    def check_cloudflare(soup: BeautifulSoup) -> bool:
-        return check_soup(soup, CLOUDFLARE_CHALLENGE_TITLES, CLOUDFLARE_CHALLENGE_SELECTORS)
 
     def load_cookie_files(self) -> None:
         if self.auto_import_cookies:
