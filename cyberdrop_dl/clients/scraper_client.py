@@ -2,8 +2,7 @@ from __future__ import annotations
 
 import json
 from contextlib import asynccontextmanager
-from functools import wraps
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 import aiohttp
 from aiohttp_client_cache.response import CachedStreamReader
@@ -14,27 +13,12 @@ from cyberdrop_dl.managers.client_manager import create_session
 from cyberdrop_dl.utils.logger import log_debug
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
-
-    from aiohttp_client_cache import CachedSession
+    from aiohttp_client_cache.session import CachedSession
     from multidict import CIMultiDictProxy
     from yarl import URL
 
     from cyberdrop_dl.managers.client_manager import ClientManager
     from cyberdrop_dl.utils.data_enums_classes.url_objects import ScrapeItem
-
-
-def limiter(func: Callable) -> Any:
-    """Wrapper handles limits for scrape session."""
-
-    @wraps(func)
-    async def wrapper(self: ScraperClient, *args, **kwargs) -> Any:
-        domain = args[0]
-        request_limiter = self.client_manager.limiter(domain)
-        async with request_limiter:
-            return await func(self, *args, **kwargs)
-
-    return wrapper
 
 
 @asynccontextmanager
@@ -69,7 +53,6 @@ class ScraperClient:
         trace_config.on_request_end.append(on_request_end)
         self.trace_configs.append(trace_config)
 
-    @limiter
     @create_session
     async def get_soup(
         self,
@@ -80,7 +63,7 @@ class ScraperClient:
         with_response_url: bool = False,
         cache_disabled: bool = False,
         retry: bool = True,
-    ) -> BeautifulSoup:
+    ) -> tuple[BeautifulSoup, URL] | BeautifulSoup:
         """Returns a BeautifulSoup object from the given URL."""
         async with (
             cache_control_manager(client_session, disabled=cache_disabled),
@@ -123,7 +106,6 @@ class ScraperClient:
         """Returns a BeautifulSoup object and response URL from the given URL."""
         return await self.get_soup(domain, url, origin=origin, with_response_url=True, **kwargs)
 
-    @limiter
     @create_session
     async def get_json(
         self,
@@ -157,7 +139,6 @@ class ScraperClient:
                 return json_resp, response
             return json_resp
 
-    @limiter
     @create_session
     async def get_text(
         self,
@@ -187,7 +168,6 @@ class ScraperClient:
                 return str(soup)
             return await response.text()
 
-    @limiter
     @create_session
     async def post_data(
         self,
@@ -221,7 +201,6 @@ class ScraperClient:
                 return content if raw else json.loads(content)
             return {}
 
-    @limiter
     @create_session
     async def get_head(
         self, domain: str, url: URL, client_session: CachedSession, *, origin: ScrapeItem | URL | None = None
