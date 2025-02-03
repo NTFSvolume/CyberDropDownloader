@@ -28,8 +28,6 @@ from cyberdrop_dl.utils.logger import log, log_spacer
 from .flaresolverr import Flaresolverr
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
-
     from cyberdrop_dl.managers.manager import Manager
     from cyberdrop_dl.scraper.crawler import ScrapeItem
 
@@ -59,7 +57,6 @@ class ClientManager:
     """Creates a 'client' that can be referenced by scraping or download sessions."""
 
     def __init__(self, manager: Manager) -> None:
-        self.manager = manager
         global_settings_data = manager.config_manager.global_settings_data
         rate_limiting_options = global_settings_data.rate_limiting_options
         verify_ssl = not global_settings_data.general.allow_insecure_connections
@@ -67,6 +64,7 @@ class ClientManager:
         connection_timeout = rate_limiting_options.connection_timeout
         total_timeout = read_timeout + connection_timeout
 
+        self.manager = manager
         self.ssl_context = ssl.create_default_context(cafile=certifi.where()) if verify_ssl else False
         self.user_agent = global_settings_data.general.user_agent
         self.auto_import_cookies = self.manager.config_manager.settings_data.browser_cookies.auto_import
