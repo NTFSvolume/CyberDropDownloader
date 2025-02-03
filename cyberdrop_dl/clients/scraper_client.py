@@ -4,20 +4,20 @@ import json
 from contextlib import asynccontextmanager
 from typing import TYPE_CHECKING
 
-import aiohttp
 from aiohttp_client_cache.response import CachedStreamReader
 from bs4 import BeautifulSoup
 
 from cyberdrop_dl.clients.errors import DDOSGuardError, InvalidContentTypeError
 from cyberdrop_dl.managers.client_manager import create_session
-from cyberdrop_dl.utils.logger import log_debug
+
+from .request_client import Client
 
 if TYPE_CHECKING:
+    import aiohttp
     from aiohttp_client_cache.session import CachedSession
     from multidict import CIMultiDictProxy
     from yarl import URL
 
-    from cyberdrop_dl.managers.client_manager import ClientManager
     from cyberdrop_dl.utils.data_enums_classes.url_objects import ScrapeItem
 
 
@@ -28,7 +28,7 @@ async def cache_control_manager(client_session: CachedSession, disabled: bool = 
     client_session.cache.disabled = False
 
 
-class ScraperClient:
+class ScraperClient(Client):
     """AIOHTTP operations for scraping."""
 
     def __init__(self, client_manager: ClientManager) -> None:

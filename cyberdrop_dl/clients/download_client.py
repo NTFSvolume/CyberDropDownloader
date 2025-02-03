@@ -10,8 +10,6 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 import aiofiles
-import aiohttp
-from aiohttp import ClientSession
 from videoprops import get_audio_properties, get_video_properties
 from yarl import URL
 
@@ -23,13 +21,17 @@ from cyberdrop_dl.clients.errors import (
 )
 from cyberdrop_dl.managers.client_manager import create_session
 from cyberdrop_dl.utils.constants import FILE_FORMATS
-from cyberdrop_dl.utils.logger import log, log_debug
+from cyberdrop_dl.utils.logger import log
+
+from .request_client import Client
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Coroutine
     from typing import Any
 
-    from cyberdrop_dl.managers.client_manager import ClientManager
+    import aiohttp
+    from aiohttp import ClientSession
+
     from cyberdrop_dl.managers.manager import Manager
     from cyberdrop_dl.utils.data_enums_classes.url_objects import MediaItem
 
@@ -79,15 +81,13 @@ def check_file_duration(media_item: MediaItem, manager: Manager) -> bool:
     return min_audio_duration <= media_item.duration <= max_audio_duration
 
 
-class DownloadClient:
+class DownloadClient(Client):
     """AIOHTTP operations for downloading."""
 
-    def __init__(self, manager: Manager, client_manager: ClientManager) -> None:
-        self.manager = manager
-        self.client_manager = client_manager
+    request_log_hooks_name = "download"
 
-        self._headers = {"user-agent": client_manager.user_agent}
-        self.trace_configs = []
+    def __init__(self, manager: Manager) -> None:
+        super().__init__(manager)
         self.slow_download_period = 10  # seconds
         self.download_speed_threshold = self.manager.config_manager.settings_data.runtime_options.slow_download_speed
         self.add_request_log_hooks()
@@ -234,9 +234,9 @@ class DownloadClient:
                 raise SlowDownloadError(origin=media_item)
 
         async with aiofiles.open(media_item.partial_file, mode="ab") as f:  # type: ignore
-            async for chunk in content.iter_chunked(self.client_manager.speed_limiter.chunk_size):
+            async for chunk in content.iter_chunked(self.client_manager.download_speed_limiter.chunk_size):
                 chunk_size = len(chunk)
-                await self.client_manager.speed_limiter.acquire(chunk_size)
+                await self.client_manager.download_speed_limiter.acquire(chunk_size)
                 await asyncio.sleep(0)
                 await f.write(chunk)
                 update_progress(chunk_size)
