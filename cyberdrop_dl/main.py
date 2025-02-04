@@ -35,7 +35,7 @@ STARTUP_LOGGER_FILE = Path().cwd().joinpath("startup.log")
 STARTUP_LOGGER_CONSOLE = None
 
 
-def startup() -> Manager | None:
+def startup() -> Manager:
     """Starts the program and returns the manager.
 
     This will also run the UI for the program
@@ -63,6 +63,7 @@ def startup() -> Manager | None:
             "AuthSettings": manager.config_manager.authentication_settings,
         }
         handle_validation_error(e, sources=sources)
+        sys.exit(1)
 
     except KeyboardInterrupt:
         startup_logger.info("Exiting...")
@@ -122,13 +123,9 @@ def setup_startup_logger() -> None:
         file=STARTUP_LOGGER_FILE.open("w", encoding="utf8"),
         width=constants.DEFAULT_CONSOLE_WIDTH,
     )
-    rich_file_handler = RichHandler(
-        **constants.RICH_HANDLER_CONFIG,
-        console=STARTUP_LOGGER_CONSOLE,
-        level=10,
-    )
+    rich_file_handler = RichHandler(10, STARTUP_LOGGER_CONSOLE, **constants.RICH_HANDLER_CONFIG)  # type: ignore
     add_custom_log_render(rich_file_handler)
-    rich_handler = RichHandler(**(constants.RICH_HANDLER_CONFIG | {"show_time": False}), level=10)
+    rich_handler = RichHandler(10, **(constants.RICH_HANDLER_CONFIG | {"show_time": False}))  # type: ignore
     startup_logger.addHandler(rich_file_handler)
     startup_logger.addHandler(rich_handler)
 
@@ -178,22 +175,18 @@ def setup_logger(manager: Manager, config_name: str) -> None:
     logger.setLevel(manager.config_manager.settings_data.runtime_options.log_level)
 
     rich_file_handler = RichHandler(
-        **constants.RICH_HANDLER_CONFIG,
         console=RedactedConsole(
             file=manager.path_manager.main_log.open("w", encoding="utf8"),
             width=manager.config_manager.settings_data.logs.log_line_width,
         ),
         level=manager.config_manager.settings_data.runtime_options.log_level,
+        **constants.RICH_HANDLER_CONFIG,  # type: ignore
     )
     add_custom_log_render(rich_file_handler)
     if not manager.parsed_args.cli_only_args.fullscreen_ui:
         constants.CONSOLE_LEVEL = manager.config_manager.settings_data.runtime_options.console_log_level
 
-    rich_handler = RichHandler(
-        **(constants.RICH_HANDLER_CONFIG | {"show_time": False}),
-        console=Console(),
-        level=constants.CONSOLE_LEVEL,
-    )
+    rich_handler = RichHandler(constants.CONSOLE_LEVEL, **(constants.RICH_HANDLER_CONFIG | {"show_time": False}))  # type: ignore
 
     logger.addHandler(rich_file_handler)
     logger.addHandler(rich_handler)
@@ -231,7 +224,7 @@ async def director(manager: Manager) -> None:
         configs_to_run = manager.config_manager.get_configs()
 
     if STARTUP_LOGGER_FILE.is_file() and STARTUP_LOGGER_FILE.stat().st_size == 0:
-        STARTUP_LOGGER_CONSOLE.file.close()
+        STARTUP_LOGGER_CONSOLE.file.close()  # type: ignore
         STARTUP_LOGGER_FILE.unlink()
 
     start_time = manager.start_time
@@ -275,7 +268,7 @@ def actual_main() -> None:
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
     exit_code = 1
-    manager = startup()
+    manager: Manager = startup()
     with contextlib.suppress(Exception):
         try:
             asyncio.run(director(manager))
