@@ -129,7 +129,7 @@ class HistoryTable:
             (domain, str(referer)),
         )
         sql_file_check = await result.fetchone()
-        return sql_file_check and sql_file_check[0] != 0
+        return bool(sql_file_check and sql_file_check[0] != 0)
 
     async def insert_incompleted(self, domain: str, media_item: MediaItem) -> None:
         """Inserts an uncompleted file into the database."""
@@ -178,7 +178,7 @@ class HistoryTable:
 
     async def add_filesize(self, domain: str, media_item: MediaItem) -> None:
         """Add the file size to the db."""
-
+        assert media_item.complete_file
         url_path = get_db_path(media_item.url, str(media_item.referer))
         file_size = pathlib.Path(media_item.complete_file).stat().st_size
         await self.db_conn.execute(
@@ -224,7 +224,7 @@ class HistoryTable:
         sql_file_check = await result.fetchone()
         return sql_file_check == 1
 
-    async def get_downloaded_filename(self, domain: str, media_item: MediaItem) -> str:
+    async def get_downloaded_filename(self, domain: str, media_item: MediaItem) -> str | None:
         """Returns the downloaded filename from the database."""
 
         url_path = get_db_path(media_item.url, str(media_item.referer))
