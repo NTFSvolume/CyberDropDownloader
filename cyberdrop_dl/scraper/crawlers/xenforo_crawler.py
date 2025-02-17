@@ -5,7 +5,7 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import re
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from functools import cached_property, partial, singledispatchmethod
 from typing import TYPE_CHECKING
 
@@ -16,7 +16,7 @@ from cyberdrop_dl.clients.errors import LoginError, ScrapeError
 from cyberdrop_dl.scraper.crawler import Crawler, create_task_id, remove_trailing_slash
 from cyberdrop_dl.scraper.filters import set_return_value
 from cyberdrop_dl.utils.data_enums_classes.url_objects import FORUM, FORUM_POST, ScrapeItem
-from cyberdrop_dl.utils.logger import log
+from cyberdrop_dl.utils.logger import log, log_debug
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext
 
 if TYPE_CHECKING:
@@ -167,6 +167,7 @@ class XenforoCrawler(Crawler):
             return
         scrape_item.parent_threads.add(thread.url)
         self.scraped_threads.add(thread.url)
+        log_debug(f"processing thread: {asdict(thread)}")
         async for soup in self.thread_pager(scrape_item):
             if not title:
                 title_block = soup.select_one(self.selectors.title.element)
@@ -202,11 +203,13 @@ class XenforoCrawler(Crawler):
                 scrape_item.add_children()
 
             if not continue_scraping:
+                log_debug(f"Skipping post {asdict(current_post)}")
                 break
         return continue_scraping, post_url
 
     async def post(self, scrape_item: ScrapeItem, post: ForumPost) -> None:
         """Scrapes a post."""
+        log_debug(f"Scraping post: {asdict(post)}")
         self.add_separate_post_title(scrape_item, post)
         scrape_item.set_type(FORUM_POST, self.manager)
         posts_scrapers = [self.attachments, self.embeds, self.images, self.links, self.videos]

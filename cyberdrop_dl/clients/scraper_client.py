@@ -12,7 +12,7 @@ from bs4 import BeautifulSoup
 
 from cyberdrop_dl.clients.errors import DDOSGuardError, InvalidContentTypeError
 from cyberdrop_dl.utils.constants import DEBUG_VAR
-from cyberdrop_dl.utils.logger import log
+from cyberdrop_dl.utils.logger import log, log_debug
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -107,6 +107,7 @@ class ScraperClient:
             try:
                 await self.client_manager.check_http_status(response, origin=origin)
             except DDOSGuardError:
+                log_debug(f"Request to {url} failed, retrying with flaresolverr")
                 await self.client_manager.manager.cache_manager.request_cache.delete_url(url)
                 soup, response_URL = await self.client_manager.flaresolverr.get(
                     url,
@@ -192,6 +193,7 @@ class ScraperClient:
             try:
                 await self.client_manager.check_http_status(response, origin=origin)
             except DDOSGuardError:
+                log_debug(f"Request to {url} failed, retrying with flaresolverr")
                 await self.client_manager.manager.cache_manager.request_cache.delete_url(url)
                 soup, _ = await self.client_manager.flaresolverr.get(url, client_session, origin)
                 if self.client_manager.check_ddos_guard(soup) or self.client_manager.check_cloudflare(soup):
