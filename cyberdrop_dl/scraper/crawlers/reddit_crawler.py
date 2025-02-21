@@ -160,7 +160,7 @@ class RedditCrawler(Crawler):
         try:
             filename, ext = get_filename_and_ext(scrape_item.url.name)
         except NoExtensionError:
-            _, url = await self.client.get_soup_and_return_url(self.domain, scrape_item.url)
+            _, url = await self.client.get_soup(self.domain, scrape_item.url)
 
             with asyncpraw_error_handle(scrape_item):
                 post = await reddit.submission(url=str(url))

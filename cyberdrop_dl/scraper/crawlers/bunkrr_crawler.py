@@ -157,7 +157,7 @@ class BunkrrCrawler(Crawler):
         soup = link_container = date = None  # type: ignore
         src_selector = "src"
         if is_stream_redirect(scrape_item.url):
-            soup, scrape_item.url = await self.client.get_soup_and_return_url(self.domain, scrape_item.url)
+            soup, scrape_item.url = await self.client.get_soup(self.domain, scrape_item.url)
 
         scrape_item.url = self.primary_base_domain.with_path(scrape_item.url.path)
         if await self.check_complete_from_referer(scrape_item):

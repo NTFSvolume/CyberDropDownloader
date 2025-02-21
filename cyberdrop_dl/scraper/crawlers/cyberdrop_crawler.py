@@ -115,7 +115,7 @@ class CyberdropCrawler(Crawler):
         if self.is_cdn(url) or "e" in url.parts:
             return self.primary_base_domain / "f" / url.parts[-1]
 
-        _, streaming_url = await self.client.get_soup_and_return_url(self.domain, url)
+        _, streaming_url = await self.client.get_soup(self.domain, url)
 
         return streaming_url
 

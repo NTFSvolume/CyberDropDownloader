@@ -39,7 +39,7 @@ class FapelloCrawler(Crawler):
     async def profile(self, scrape_item: ScrapeItem) -> None:
         """Scrapes a profile."""
         async with self.request_limiter:
-            soup, response_url = await self.client.get_soup_and_return_url(
+            soup, response_url = await self.client.get_soup(
                 self.domain,
                 scrape_item.url,
                 origin=scrape_item,

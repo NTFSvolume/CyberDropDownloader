@@ -9,6 +9,7 @@ from bs4 import BeautifulSoup
 from yarl import URL
 
 from cyberdrop_dl.clients.http import check
+from cyberdrop_dl.clients.http.responses import GetRequestResponse
 from cyberdrop_dl.exceptions import DDOSGuardError
 from cyberdrop_dl.utils.logger import log
 
@@ -87,7 +88,7 @@ class Flaresolverr:
         url: URL,
         client_session: ClientSession,
         origin: ScrapeItem | URL | None = None,
-    ) -> tuple[BeautifulSoup, URL]:
+    ) -> FlaresolverrResponse:
         """Returns the resolved URL from the given URL."""
         json_resp: dict = await self._request("request.get", client_session, origin, url=url)
 
@@ -117,16 +118,14 @@ class Flaresolverr:
                     {cookie["name"]: cookie["value"]}, URL(f"https://{cookie['domain']}")
                 )
 
-        return fs_resp.soup, fs_resp.url
+        return fs_resp
 
 
-@dataclass(frozen=True, slots=True)
-class FlaresolverrResponse:
+@dataclass(frozen=True, slots=True, kw_only=True)
+class FlaresolverrResponse(GetRequestResponse):
     status: str
     cookies: dict
     user_agent: str
-    soup: BeautifulSoup
-    url: URL
 
     @classmethod
     def from_dict(cls, flaresolverr_resp: dict) -> FlaresolverrResponse:
@@ -138,4 +137,12 @@ class FlaresolverrResponse:
         cookies: dict = solution.get("cookies") or {}
         soup = BeautifulSoup(response, "html.parser")
         url = URL(url_str)
-        return cls(status, cookies, user_agent, soup, url)
+        return cls(
+            status=status,
+            cookies=cookies,
+            user_agent=user_agent,
+            soup=soup,
+            response_url=url,
+            response=None,  # type: ignore
+            headers=solution,
+        )
