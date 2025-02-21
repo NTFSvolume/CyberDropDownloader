@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING, NamedTuple
 
 from yarl import URL
 
-from cyberdrop_dl.errors import ScrapeError
+from cyberdrop_dl.exceptions import ScrapeError
 from cyberdrop_dl.scraper.crawler import Crawler, create_task_id
 from cyberdrop_dl.utils import javascript
 from cyberdrop_dl.utils.logger import log_debug

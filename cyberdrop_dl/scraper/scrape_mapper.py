@@ -11,7 +11,7 @@ import arrow
 from yarl import URL
 
 from cyberdrop_dl.clients.http.downloader import Downloader
-from cyberdrop_dl.errors import JDownloaderError, NoExtensionError
+from cyberdrop_dl.exceptions import JDownloaderError, NoExtensionError
 from cyberdrop_dl.scraper import CRAWLERS, filters
 from cyberdrop_dl.scraper.jdownloader import JDownloader
 from cyberdrop_dl.utils.constants import BLOCKED_DOMAINS, REGEX_LINKS

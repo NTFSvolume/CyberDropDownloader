@@ -14,7 +14,7 @@ from aiolimiter import AsyncLimiter
 from yarl import URL
 
 from cyberdrop_dl.clients.http.downloader import Downloader
-from cyberdrop_dl.errors import InvalidURLError
+from cyberdrop_dl.exceptions import InvalidURLError
 from cyberdrop_dl.utils.data_enums_classes.url_objects import MediaItem, ScrapeItem
 from cyberdrop_dl.utils.database.tables.history_table import get_db_path
 from cyberdrop_dl.utils.logger import log

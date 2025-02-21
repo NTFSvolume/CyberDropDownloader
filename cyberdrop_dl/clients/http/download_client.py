@@ -14,7 +14,7 @@ from videoprops import get_audio_properties, get_video_properties
 from yarl import URL
 
 from cyberdrop_dl.clients.http import Client, check, create_session
-from cyberdrop_dl.errors import (
+from cyberdrop_dl.exceptions import (
     DownloadError,
     InsufficientFreeSpaceError,
     InvalidContentTypeError,

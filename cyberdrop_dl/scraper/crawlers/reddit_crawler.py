@@ -11,7 +11,7 @@ from aiolimiter import AsyncLimiter
 from asyncpraw import Reddit
 from yarl import URL
 
-from cyberdrop_dl.errors import LoginError, NoExtensionError, ScrapeError
+from cyberdrop_dl.exceptions import LoginError, NoExtensionError, ScrapeError
 from cyberdrop_dl.scraper.crawler import Crawler, create_task_id
 from cyberdrop_dl.utils.data_enums_classes.url_objects import FILE_HOST_ALBUM, FILE_HOST_PROFILE, ScrapeItem
 from cyberdrop_dl.utils.logger import log, log_debug
