@@ -13,7 +13,6 @@ from yarl import URL
 
 from cyberdrop_dl.clients.download_client import DownloadClient
 from cyberdrop_dl.clients.scraper_client import ScraperClient
-from cyberdrop_dl.managers.download_speed_manager import DownloadSpeedLimiter
 from cyberdrop_dl.managers.flaresolverr import Flaresolverr
 from cyberdrop_dl.ui.prompts.user_prompts import get_cookies_from_browsers
 from cyberdrop_dl.utils.logger import log, log_spacer
@@ -21,6 +20,24 @@ from cyberdrop_dl.utils.logger import log, log_spacer
 if TYPE_CHECKING:
     from cyberdrop_dl.managers.manager import Manager
     from cyberdrop_dl.scraper.crawler import Crawler
+
+
+class DownloadSpeedLimiter(AsyncLimiter):
+    def __init__(self, manager: Manager) -> None:
+        self.download_speed_limit = (
+            manager.config_manager.global_settings_data.rate_limiting_options.download_speed_limit
+        )
+        self.chunk_size = 1024 * 1024 * 10  # 10MB
+        if self.download_speed_limit:
+            self.chunk_size = min(self.chunk_size, self.download_speed_limit)
+        super().__init__(self.download_speed_limit, 1)
+
+    async def acquire(self, amount: float | None = None) -> None:
+        if self.download_speed_limit <= 0:
+            return
+        if not amount:
+            amount = self.chunk_size
+        await super().acquire(amount)
 
 
 class ClientManager:
