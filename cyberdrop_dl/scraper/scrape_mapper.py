@@ -10,7 +10,7 @@ import aiofiles
 import arrow
 from yarl import URL
 
-from cyberdrop_dl.clients.http.downloader import Downloader
+from cyberdrop_dl.clients.downloader import Downloader
 from cyberdrop_dl.exceptions import JDownloaderError, NoExtensionError
 from cyberdrop_dl.scraper import CRAWLERS, filters
 from cyberdrop_dl.scraper.jdownloader import JDownloader

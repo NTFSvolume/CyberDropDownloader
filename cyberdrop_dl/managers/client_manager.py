@@ -11,8 +11,8 @@ import certifi
 from aiolimiter import AsyncLimiter
 from yarl import URL
 
-from cyberdrop_dl.clients.http.download_client import DownloadClient
-from cyberdrop_dl.clients.http.scraper_client import ScraperClient
+from cyberdrop_dl.clients.download_client import DownloadClient
+from cyberdrop_dl.clients.scraper_client import ScraperClient
 from cyberdrop_dl.managers.download_speed_manager import DownloadSpeedLimiter
 from cyberdrop_dl.managers.flaresolverr import Flaresolverr
 from cyberdrop_dl.ui.prompts.user_prompts import get_cookies_from_browsers

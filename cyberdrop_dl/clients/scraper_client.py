@@ -7,8 +7,8 @@ from typing import TYPE_CHECKING
 from aiohttp_client_cache.response import CachedStreamReader
 from bs4 import BeautifulSoup
 
-from cyberdrop_dl.clients.http import Client, check, create_session
-from cyberdrop_dl.clients.http.responses import GetRequestResponse, JsonRequestResponse, PostRequestResponse
+from cyberdrop_dl.clients import Client, check, create_session
+from cyberdrop_dl.clients.responses import GetRequestResponse, JsonRequestResponse, PostRequestResponse
 from cyberdrop_dl.exceptions import DDOSGuardError, InvalidContentTypeError
 
 if TYPE_CHECKING:
@@ -16,7 +16,7 @@ if TYPE_CHECKING:
     from multidict import CIMultiDictProxy
     from yarl import URL
 
-    from cyberdrop_dl.clients.http.responses import Headers
+    from cyberdrop_dl.clients.responses import Headers
 
 
 @asynccontextmanager
@@ -36,7 +36,7 @@ class ScraperClient(Client):
         client_session: CachedSession,
         *,
         cache_disabled: bool = False,
-        retry: bool = True,
+        _retry: bool = True,
         **session_kwargs,
     ) -> GetRequestResponse:
         """Returns a BeautifulSoup object from the given URL."""
@@ -50,8 +50,10 @@ class ScraperClient(Client):
             except DDOSGuardError:
                 await self.client_manager.manager.cache_manager.request_cache.delete_url(url)
                 f_resp = await self.client_manager.flaresolverr.get(url, client_session)
-                if check.is_ddos_guard(f_resp.soup):
-                    if not retry:
+                soup = f_resp.soup
+                if check.is_ddos_guard(soup):
+                    del f_resp
+                    if not _retry:
                         raise DDOSGuardError(message="Unable to access website with flaresolverr cookies") from None
                     return await self.get_soup(url, client_session, retry=False, cache_disabled=True)
 
@@ -106,11 +108,11 @@ class ScraperClient(Client):
         req_resp: bool = True,
         **session_kwargs,
     ) -> PostRequestResponse:
-        """Returns a JSON object from the given URL when posting data. If raw == True, returns raw binary data of response."""
+        """Returns a JSON object from the given URL when posting data."""
         session_kwargs = self.request_params | session_kwargs
         async with (
             cache_control(client_session, disabled=cache_disabled),
-            client_session.post(url, **session_kwargs, data=data) as response,
+            client_session.post(url, data=data, **session_kwargs) as response,
         ):
             await check.raise_for_http_status(response)
             if not req_resp:
@@ -151,8 +153,8 @@ class ScraperClient(Client):
                 await self.client_manager.manager.cache_manager.request_cache.delete_url(url)
                 f_resp = await self.client_manager.flaresolverr.get(url, client_session)
                 soup = f_resp.soup
-                del f_resp
                 if check.is_ddos_guard(soup):
+                    del f_resp
                     if not _retry:
                         raise DDOSGuardError(message="Unable to access website with flaresolverr cookies") from None
                     return await self.get_text(url, client_session, _retry=False, cache_disabled=True)

@@ -13,7 +13,7 @@ from typing import TYPE_CHECKING, Any, ClassVar, Protocol
 from aiolimiter import AsyncLimiter
 from yarl import URL
 
-from cyberdrop_dl.clients.http.downloader import Downloader
+from cyberdrop_dl.clients.downloader import Downloader
 from cyberdrop_dl.exceptions import InvalidURLError
 from cyberdrop_dl.utils.data_enums_classes.url_objects import MediaItem, ScrapeItem
 from cyberdrop_dl.utils.database.tables.history_table import get_db_path
@@ -23,7 +23,7 @@ from cyberdrop_dl.utils.utilities import get_download_path, get_filename_and_ext
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-    from cyberdrop_dl.clients.http.scraper_client import ScraperClient
+    from cyberdrop_dl.clients.scraper_client import ScraperClient
     from cyberdrop_dl.managers.manager import Manager
 
 UNKNOWN_URL_PATH_MSG = "Unknown URL path"

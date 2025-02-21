@@ -9,7 +9,7 @@ if TYPE_CHECKING:
     from multidict import CIMultiDictProxy
     from yarl import URL
 
-    Headers = CIMultiDictProxy | dict
+    Headers = CIMultiDictProxy[str] | dict[str, str | int]
 
 
 @dataclass(slots=True, frozen=True)
