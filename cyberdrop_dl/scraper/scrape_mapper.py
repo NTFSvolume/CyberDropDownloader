@@ -10,9 +10,8 @@ import aiofiles
 import arrow
 from yarl import URL
 
-from cyberdrop_dl.clients.errors import JDownloaderError, NoExtensionError
 from cyberdrop_dl.clients.http.downloader import Downloader
-from cyberdrop_dl.errors import JDownloaderError
+from cyberdrop_dl.errors import JDownloaderError, NoExtensionError
 from cyberdrop_dl.scraper import CRAWLERS, filters
 from cyberdrop_dl.scraper.jdownloader import JDownloader
 from cyberdrop_dl.utils.constants import BLOCKED_DOMAINS, REGEX_LINKS
@@ -45,7 +44,7 @@ class ScrapeMapper:
         """Starts all scrapers."""
         for crawler in CRAWLERS:
             if not crawler.SUPPORTED_SITES:
-                site_crawler = crawler(self.manager)
+                site_crawler = crawler(self.manager)  # type: ignore
                 assert site_crawler.domain not in self.existing_crawlers
                 self.existing_crawlers[site_crawler.domain] = site_crawler
                 continue
@@ -284,15 +283,10 @@ class ScrapeMapper:
 
     def filter_items(self, scrape_item: ScrapeItem) -> bool:
         """Pre-filter scrape items base on URL."""
-<<<<<<< HEAD:cyberdrop_dl/scraper/scraper.py
-=======
-<<<<<<< HEAD:cyberdrop_dl/scraper/scraper.py
+
         self.count += 1
->>>>>>> 85714492 (refactor: rename `scrape` to `scrape_mapper`):cyberdrop_dl/scraper/scrape_mapper.py
-        if not is_valid_url(scrape_item):
-=======
+
         if not filters.is_valid_url(scrape_item):
->>>>>>> 299b9098 (refactor: rename `scrape` to `scrape_mapper`):cyberdrop_dl/scraper/scrape_mapper.py
             return False
 
         if filters.is_in_domain_list(scrape_item, BLOCKED_DOMAINS):

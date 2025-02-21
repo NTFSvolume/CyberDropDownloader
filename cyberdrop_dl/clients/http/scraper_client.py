@@ -29,28 +29,6 @@ async def cache_control(client_session: CachedSession, disabled: bool = False):
 class ScraperClient(Client):
     """AIOHTTP operations for scraping."""
 
-    def __init__(self, client_manager: ClientManager) -> None:
-        self.client_manager = client_manager
-        self._headers = {"user-agent": client_manager.user_agent}
-        self.trace_configs = []
-        self.add_request_log_hooks()
-
-    def add_request_log_hooks(self) -> None:
-        async def on_request_start(*args):
-            params: aiohttp.TraceRequestStartParams = args[2]
-            log_debug(f"Starting scrape {params.method} request to {params.url}", 10)
-
-        async def on_request_end(*args):
-            params: aiohttp.TraceRequestEndParams = args[2]
-            msg = f"Finishing scrape {params.method} request to {params.url}"
-            msg += f" -> response status: {params.response.status}"
-            log_debug(msg, 10)
-
-        trace_config = aiohttp.TraceConfig()
-        trace_config.on_request_start.append(on_request_start)
-        trace_config.on_request_end.append(on_request_end)
-        self.trace_configs.append(trace_config)
-
     @create_session
     async def get_soup_and_return_url(
         self,
