@@ -16,6 +16,8 @@ if TYPE_CHECKING:
     from multidict import CIMultiDictProxy
     from yarl import URL
 
+    from cyberdrop_dl.clients.http.responses import Headers
+
 
 @asynccontextmanager
 async def cache_control(client_session: CachedSession, disabled: bool = False):
@@ -47,18 +49,18 @@ class ScraperClient(Client):
                 await check.raise_for_http_status(response)
             except DDOSGuardError:
                 await self.client_manager.manager.cache_manager.request_cache.delete_url(url)
-                cdl_response = await self.client_manager.flaresolverr.get(url, client_session)
-                if check.is_ddos_guard(cdl_response.soup):
+                f_resp = await self.client_manager.flaresolverr.get(url, client_session)
+                if check.is_ddos_guard(f_resp.soup):
                     if not retry:
                         raise DDOSGuardError(message="Unable to access website with flaresolverr cookies") from None
                     return await self.get_soup(url, client_session, retry=False, cache_disabled=True)
 
-                return cdl_response
+                return f_resp
 
-            content_type = response.headers.get("Content-Type")
-            assert content_type is not None
-            if not any(s in content_type.lower() for s in ("html", "text")):
+            content_type = get_content_type(response.headers)
+            if not any(s in content_type for s in ("html", "text")):
                 raise InvalidContentTypeError(message=f"Received {content_type}, was expecting text")
+
             text = await CachedStreamReader(await response.read()).read()
             soup = BeautifulSoup(text, "html.parser")
             return GetRequestResponse(response.url, response.headers, response, soup)
@@ -79,9 +81,7 @@ class ScraperClient(Client):
             client_session.get(url, **session_kwargs) as response,
         ):
             await check.raise_for_http_status(response)
-            content_type = response.headers.get("Content-Type")
-            assert content_type is not None
-            content_type = content_type.lower()
+            content_type = get_content_type(response.headers)
             json_resp: dict = {}
             if "text" in content_type:
                 try:
@@ -158,3 +158,9 @@ class ScraperClient(Client):
                     return await self.get_text(url, client_session, _retry=False, cache_disabled=True)
                 return str(soup)
             return await response.text()
+
+
+def get_content_type(headers: Headers) -> str:
+    content_type: str = headers.get("Content-Type")  # type: ignore
+    assert content_type is not None
+    return content_type.lower()

@@ -9,11 +9,13 @@ if TYPE_CHECKING:
     from multidict import CIMultiDictProxy
     from yarl import URL
 
+    Headers = CIMultiDictProxy | dict
+
 
 @dataclass(slots=True, frozen=True)
 class RequestResponse:
     response_url: URL
-    headers: CIMultiDictProxy | dict
+    headers: Headers
     response: aiohttp.ClientResponse
 
 
