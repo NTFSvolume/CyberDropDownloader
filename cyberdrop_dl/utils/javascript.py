@@ -2,6 +2,12 @@ from __future__ import annotations
 
 import json
 import re
+from typing import Any
+
+import esprima
+from esprima import nodes
+
+from cyberdrop_dl.utils.logger import log_debug
 
 HTTPS_PLACEHOLDER = "<<SAFE_HTTPS>>"
 HTTP_PLACEHOLDER = "<<SAFE_HTTP>>"
@@ -77,3 +83,53 @@ def clean_value(value: list | str | int) -> list | str | int | None:
     if isinstance(value, list):
         return [clean_value(v) for v in value]
     return value
+
+
+def get_javascript_variables(js_code: str) -> dict[str, Any]:
+    """Parses JavaScript code with esprima and returns a dictionary of every variable declaration.
+
+    Only extract literal values (no arimetic or strings operations)"""
+
+    try:
+        tree: nodes.Script = esprima.parseScript(js_code)  # type: ignore
+        variables = {}
+        for node in tree.body:
+            if isinstance(node, nodes.VariableDeclaration):
+                declarations: list[nodes.VariableDeclarator] = node.declarations
+                for declaration in declarations:
+                    var_name: str = declaration.id.name
+                    variables[var_name] = None
+                    if declaration.init:
+                        variables[var_name] = extract_values_from_node(declaration.init)
+        return variables
+
+    except esprima.Error as e:
+        msg = f"Esprima parse error: {e} \n {js_code = }"
+        log_debug(msg)
+
+    return {}
+
+
+def extract_values_from_node(node: nodes.Node) -> Any:
+    # variable
+    if isinstance(node, nodes.Literal):
+        return node.value
+
+    # list
+    if isinstance(node, nodes.ArrayExpression):
+        arr = []
+        for element in node.elements:
+            value = extract_values_from_node(element)
+            arr.append(value)
+        return arr
+
+    # dict
+    if isinstance(node, nodes.ObjectExpression):
+        obj = {}
+        properties: list[nodes.Property] = node.properties
+        for prop in properties:
+            key_name: str = prop.key.value
+            value = extract_values_from_node(prop.value)
+            obj[key_name] = value
+
+        return obj
