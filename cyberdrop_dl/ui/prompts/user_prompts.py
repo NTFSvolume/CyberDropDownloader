@@ -215,7 +215,10 @@ def extract_cookies(manager: Manager, *, dry_run: bool = False) -> None:
         manager.config_manager.settings_data.browser_cookies.sites = sorted(new_sites)
         return
 
-    get_cookies_from_browsers(manager, browsers=browsers, domains=domains)
+    # Save the cookies to disk but do not try lo load them. Client manager is not ready yet
+    # They will be loaded inside the async startup
+    _ = list(get_cookies_from_browsers(manager, browsers=browsers, domains=domains, save=True))
+
     console.print("Import finished", style="green")
     basic_prompts.enter_to_continue()
 

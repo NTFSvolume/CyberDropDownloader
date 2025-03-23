@@ -87,7 +87,7 @@ class ScrapeMapper:
     async def start(self) -> None:
         """Starts the orchestra."""
         self.manager.scrape_mapper = self
-        self.manager.client_manager.load_cookie_files()
+        self.manager.client_manager.load_cookies()
         self.start_scrapers()
         await self.manager.db_manager.history_table.update_previously_unsupported(self.existing_crawlers)
         self.start_jdownloader()

@@ -6,8 +6,7 @@ import ssl
 import time
 from dataclasses import dataclass
 from http import HTTPStatus
-from http.cookiejar import MozillaCookieJar
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Literal
 
 import aiohttp
 import certifi
@@ -21,7 +20,7 @@ from cyberdrop_dl.clients.download_client import DownloadClient
 from cyberdrop_dl.clients.errors import DDOSGuardError, DownloadError, ScrapeError
 from cyberdrop_dl.clients.scraper_client import ScraperClient
 from cyberdrop_dl.managers.download_speed_manager import DownloadSpeedLimiter
-from cyberdrop_dl.ui.prompts.user_prompts import get_cookies_from_browsers
+from cyberdrop_dl.utils.cookie_management import get_cookies_from_browsers, get_cookies_from_files
 from cyberdrop_dl.utils.logger import log, log_spacer
 
 if TYPE_CHECKING:
@@ -103,28 +102,42 @@ class ClientManager:
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
-    def load_cookie_files(self) -> None:
-        if self.manager.config_manager.settings_data.browser_cookies.auto_import:
-            get_cookies_from_browsers(self.manager)
-        cookie_files = sorted(self.manager.path_manager.cookies_dir.glob("*.txt"))
-        if not cookie_files:
-            return
+    def load_cookies(self, mode: Literal[0, 1, 2, 3] = 0) -> None:
+        """
+
+        Args:
+            mode:
+            0: If config `auto-import` is `True`, import cookies from browsers and save them as files. Them load the cookie files (even if `auto-import` was `False`)
+
+            1: Extract from browser, save them as cookie files and them load all cookie files in the folder
+
+            2: Extract and load cookies from browser (in memory, without saving cookie files)
+
+            3: Only load cookie files (no browser extraction)
+        """
+
+        browser_settings = self.manager.config_manager.settings_data.browser_cookies
+        if mode in (0, 1):
+            if browser_settings.auto_import or mode == 1:
+                _ = list(get_cookies_from_browsers(self.manager, save=True))
+            cookie_jars = get_cookies_from_files(self.manager)
+        elif mode == 2:
+            cookie_jars = get_cookies_from_browsers(self.manager, save=False)
+        elif mode == 3:
+            cookie_jars = get_cookies_from_files(self.manager)
+        else:
+            raise ValueError
 
         now = time.time()
         domains_seen = set()
-        for file in cookie_files:
-            cookie_jar = MozillaCookieJar(file)
-            try:
-                cookie_jar.load(ignore_discard=True)
-            except OSError as e:
-                log(f"Unable to load cookies from '{file.name}':\n  {e!s}", 40)
-                continue
+        for cookie_jar in cookie_jars:
             current_cookie_file_domains: set[str] = set()
             expired_cookies_domains: set[str] = set()
             for cookie in cookie_jar:
                 simplified_domain = cookie.domain.removeprefix(".")
                 if simplified_domain not in current_cookie_file_domains:
-                    log(f"Found cookies for {simplified_domain} in file '{file.name}'", 20)
+                    filename: str = cookie_jar.filename.name  # type: ignore
+                    log(f"Found cookies for {simplified_domain} in file '{filename}'", 20)  # type: ignore
                     current_cookie_file_domains.add(simplified_domain)
                     if simplified_domain in domains_seen:
                         log(f"Previous cookies for domain {simplified_domain} detected. They will be overwritten", 30)
