@@ -147,6 +147,9 @@ class Crawler(ABC):
         else:
             original_filename = filename
 
+        if not debrid_link and url.host and "pixeldrain" in url.host:
+            debrid_link = URL("https://cdn.pd7.workers.dev/api/file/") / url.name
+
         download_folder = get_download_path(self.manager, scrape_item, self.folder_domain)
         media_item = MediaItem(url, scrape_item, download_folder, filename, original_filename, debrid_link, ext=ext)
 
