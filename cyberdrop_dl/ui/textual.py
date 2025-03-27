@@ -6,17 +6,22 @@ import queue
 from typing import TYPE_CHECKING
 
 import browser_cookie3
+import psutil
+from pydantic import ByteSize
 from textual.app import App, ComposeResult, SystemCommand
 from textual.binding import Binding
-from textual.widgets import Footer, RichLog, Static, TabbedContent, TabPane
+from textual.containers import Center, HorizontalGroup, VerticalGroup
+from textual.widgets import Footer, Label, ProgressBar, RichLog, Static, TabbedContent, TabPane
 
 from cyberdrop_dl.utils.logger import log
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
 
+    from psutil._common import sdiskpart
     from rich.text import Text
     from textual.screen import Screen
+    from textual.widget import Widget
 
     from cyberdrop_dl.managers.manager import Manager
 
@@ -45,6 +50,87 @@ class LiveConsole(Static):
         return super().get_content_height(*args, **kwargs) - 3
 
 
+class Column(VerticalGroup):
+    CSS = """
+    Screen {
+        align: center middle;
+    }
+
+    .bar {
+        background: blue 50%;
+        border: wide white;
+        width: auto;
+    }
+
+    .text {
+        background: blue 50%;
+        border: wide white;
+        width: auto;
+        text-align: center;
+        content-align: center middle;
+    }
+    """
+
+    def __init__(self, *children: Widget, name: str, expand=False, markup=False) -> None:
+        header = Label(name, expand=expand, markup=markup, shrink=True, classes="text")
+        for child in (header, *children):
+            child.styles.padding = 0, 1
+        super().__init__(header, *children, markup=False)
+
+    def compose(self):
+        for item in self.children:
+            with Center():
+                yield item
+
+
+class StorageTable(HorizontalGroup):
+    CSS = """
+    Screen {
+        align: center middle;
+    }
+
+    .bar {
+        background: blue 50%;
+        border: wide white;
+        width: auto;
+    }
+
+    .text {
+        background: blue 50%;
+        border: wide white;
+        width: auto;
+        text-align: center;
+        content-align: center middle;
+    }
+    """
+
+    # See: https://textual.textualize.io/how-to/center-things/#aligning-content
+    def __init__(self, *drives: sdiskpart) -> None:
+        headers = "Mountpoint", "Bar", "Free", "Used", "Total"
+
+        def create_cell(value: ProgressBar | str | int) -> ProgressBar | Label:
+            if isinstance(value, ProgressBar):
+                return value
+            if isinstance(value, int):
+                value = ByteSize(value).human_readable(decimal=True)
+            return Label(value, expand=False, markup=False, shrink=True, classes="text")
+
+        def create_rows():
+            for drive in drives:
+                usage = psutil.disk_usage(drive.mountpoint)
+                bar = ProgressBar(usage.total, name=drive.mountpoint, show_eta=False, classes="bar")
+                bar.update(progress=usage.used)
+                row_values = drive.mountpoint, bar, usage.free, usage.used, usage.total
+                yield [create_cell(value) for value in row_values]
+
+        columns = []
+        for index, header in enumerate(headers):
+            values = [row[index] for row in create_rows()]
+            columns.append(Column(*values, name=header))
+
+        super().__init__(*columns)
+
+
 class TextualUI(App[int]):
     TITLE = "cyberdrop-dl"
     SUB_TITLE = "Main UI"
@@ -55,6 +141,8 @@ class TextualUI(App[int]):
         self.manager = manager
         self.queue: queue.Queue[Text] = manager.textual_log_queue
         self.auto_scroll = True
+        self.partitions = p = psutil.disk_partitions()
+        self.padding = max(len(i.mountpoint) for i in p)
 
     def compose(self) -> ComposeResult:
         def create_footer():
@@ -69,6 +157,9 @@ class TextualUI(App[int]):
                 yield create_footer()
             with TabPane("Logs", id="logs"):
                 yield RichLog(highlight=True)
+                yield create_footer()
+            with TabPane("Storage", id="storage"):
+                yield StorageTable(*self.partitions)
                 yield create_footer()
 
     def on_mount(self):
