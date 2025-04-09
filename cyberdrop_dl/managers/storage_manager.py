@@ -55,7 +55,7 @@ class StorageManager:
     async def check_free_space(self, media_item: MediaItem) -> None:
         """Checks if there is enough free space on download this item"""
 
-        await self.manager.states.RUNNING.wait()
+        await self.manager.wait_running()
         if not await self._has_sufficient_space(media_item.download_folder):
             """ Needs textual UI
             if self.manager.config_manager.global_settings_data.general.pause_on_insufficient_space:
@@ -112,7 +112,7 @@ class StorageManager:
             # if self.data_writen // MIN_REQUIRED_FREE_SPACE <= last_check:
             #    continue
             # But every second is more accurate
-            await self.manager.states.RUNNING.wait()
+            await self.manager.wait_running()
             self._updated.clear()
             last_check += 1
             if self._used_mounts:

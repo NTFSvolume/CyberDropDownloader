@@ -71,7 +71,6 @@ async def runtime(manager: Manager) -> None:
     if manager.multiconfig and manager.config_manager.settings_data.sorting.sort_downloads:
         return
 
-    manager.states.RUNNING.set()
     with manager.live_manager.get_main_live(stop=True):
         if manager.live_manager.use_textual:
             await manager.app.run_async()
@@ -254,13 +253,13 @@ def ui_error_handling_wrapper(func: Callable) -> Callable:
 
 async def scheduler(manager: Manager) -> None:
     for func in (runtime, post_runtime):
-        if manager.states.SHUTTING_DOWN.is_set():
+        if manager.states.RUNNING.is_set():
             return
         manager.current_task = task = asyncio.create_task(func(manager))
         try:
             await task
         except asyncio.CancelledError:
-            if not manager.states.SHUTTING_DOWN.is_set():
+            if not manager.states.RUNNING.is_set():
                 raise
 
 
@@ -292,7 +291,7 @@ async def director(manager: Manager) -> None:
 
         manager.progress_manager.print_stats(start_time)
 
-        if not configs_to_run or manager.states.SHUTTING_DOWN.is_set():
+        if not configs_to_run or manager.states.RUNNING.is_set():
             log_spacer(20)
             log("Checking for Updates...", 20)
             check_latest_pypi()
@@ -303,7 +302,7 @@ async def director(manager: Manager) -> None:
         await send_webhook_message(manager)
         await send_apprise_notifications(manager)
         start_time = perf_counter()
-        if manager.states.SHUTTING_DOWN.is_set():
+        if manager.states.RUNNING.is_set():
             return
 
 

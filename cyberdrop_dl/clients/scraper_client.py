@@ -47,7 +47,7 @@ def limiter(func: Callable) -> Any:
         async with self.client_manager.session_limit:
             await self._global_limiter.acquire()
             await domain_limiter.acquire()
-            await self.client_manager.manager.states.RUNNING.wait()
+            await self.client_manager.manager.wait_running()
 
             if "cffi" in func.__name__:
                 if curl_import_error is not None:

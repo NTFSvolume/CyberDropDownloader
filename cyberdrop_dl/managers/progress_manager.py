@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import asyncio
+import functools
 import time
 from contextlib import asynccontextmanager
 from dataclasses import field
@@ -24,7 +26,7 @@ from cyberdrop_dl.ui.progress.statistic_progress import DownloadStatsProgress, S
 from cyberdrop_dl.utils.logger import log, log_spacer, log_with_color
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncGenerator
+    from collections.abc import AsyncGenerator, Callable
     from pathlib import Path
 
     from rich.console import RenderableType
@@ -36,6 +38,22 @@ log_cyan = partial(log_with_color, style="cyan", level=20)
 log_yellow = partial(log_with_color, style="yellow", level=20)
 log_green = partial(log_with_color, style="green", level=20)
 log_red = partial(log_with_color, style="red", level=20)
+
+
+def thread_safe(func: Callable[..., None]):
+    """Wraps a function call with loop.call_soon_threadsafe to execute it in the event loop's thread."""
+
+    def decorator():
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs) -> None:
+            loop = asyncio.get_running_loop()
+            partial_func = functools.partial(func, *args, **kwargs)
+            loop.call_soon_threadsafe(partial_func)
+            return
+
+        return wrapper
+
+    return decorator
 
 
 class ProgressManager:
@@ -70,17 +88,20 @@ class ProgressManager:
         finally:
             self.status_message.update(self.status_message_task_id, visible=False)
 
+    @thread_safe
     def pause_or_resume(self):
         if self.manager.states.RUNNING.is_set():
             self.pause()
         else:
             self.resume()
 
+    @thread_safe
     def pause(self, msg: str = ""):
         self.manager.states.RUNNING.clear()
         suffix = f" [{msg}]" if msg else ""
         self.activity.update(self.activity_task_id, description=f"Paused{suffix}")
 
+    @thread_safe
     def resume(self):
         self.manager.states.RUNNING.set()
         self.activity.update(self.activity_task_id, description="Running Cyberdrop-DL")

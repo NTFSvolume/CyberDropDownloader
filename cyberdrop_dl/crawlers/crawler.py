@@ -101,7 +101,7 @@ class Crawler(ABC):
         if not item.url.host:
             return
 
-        await self.manager.states.RUNNING.wait()
+        await self.manager.wait_running()
         self.waiting_items += 1
         async with self._semaphore:
             self.waiting_items -= 1
@@ -132,7 +132,7 @@ class Crawler(ABC):
         m3u8_content: str = "",
     ) -> None:
         """Finishes handling the file and hands it off to the downloader."""
-        await self.manager.states.RUNNING.wait()
+        await self.manager.wait_running()
         if custom_filename:
             original_filename, filename = filename, custom_filename
         elif self.domain in ["cyberdrop"]:
@@ -318,7 +318,7 @@ def create_task_id(func: Callable) -> Callable:
     @wraps(func)
     async def wrapper(self: Crawler, *args, **kwargs):
         scrape_item: ScrapeItem = args[0]
-        await self.manager.states.RUNNING.wait()
+        await self.manager.wait_running()
         task_id = self.scraping_progress.add_task(scrape_item.url)
         try:
             if not self.skip_pre_check:

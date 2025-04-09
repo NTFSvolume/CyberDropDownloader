@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import queue
+import time
 from typing import TYPE_CHECKING
 
 import browser_cookie3
@@ -13,6 +14,7 @@ from cyberdrop_dl.utils.logger import log
 if TYPE_CHECKING:
     from collections.abc import Iterable
 
+    from rich.console import RenderableType
     from rich.text import Text
     from textual.screen import Screen
 
@@ -73,39 +75,47 @@ class TextualUI(App[int]):
         """Sets a refresh rate according to the config
 
         This is only for the main UI progress. Textual will compute the required refresh for its native stuff"""
-        refresh_rate = self.manager.live_manager.refresh_rate
-        self.set_interval(1 / refresh_rate, self.update_live)
-        self.run_worker(self.manager.run)
+        self.run_worker(self.live_watcher_thread, thread=True)
+        self.run_worker(self.manager.run, thread=True)
+        self.set_interval(1 / self.manager.live_manager.refresh_rate, self.update_logs)
 
-    def update_live(self) -> None:
+    def live_watcher_thread(self):
         """Get the current layout from the manager's live and manually update the content in the main UI"""
 
         # This is not officially supported by textual but it works
         # Doing this natively in textual will required a lot more work
         # It will not look as `good` either because textual widgets are still really basic
         # Ex: progress bar can only show % and ETA (no speed)
-        content = self.manager.live_manager.live._renderable
-        self.query_one(LiveConsole).update(content)  # type: ignore
+        live = self.manager.live_manager.live
+        while True:
+            with live._lock:
+                self.call_from_thread(self.update_live, live._renderable)
+            time.sleep(1 / self.manager.live_manager.refresh_rate)
+
+    def update_live(self, content: RenderableType) -> None:
+        self.query_one(LiveConsole).update(content)
+
+    def update_logs(self):
+        def get_queued_log_messages() -> Iterable[Text]:
+            """Get all messages from the queue handler"""
+            while True:
+                try:
+                    log_msg = self.queue.get(block=False)
+                    yield log_msg
+                    self.queue.task_done()
+                except queue.Empty:
+                    break
 
         logger = self.query_one(RichLog)
-        for msg in self.get_queued_log_messages():
+        for msg in get_queued_log_messages():
             logger.write(msg, scroll_end=self.auto_scroll)
-
-    def get_queued_log_messages(self) -> Iterable[Text]:
-        """Get all messages from the queue handler"""
-        while True:
-            try:
-                log_msg = self.queue.get(block=False)
-                yield log_msg
-                self.queue.task_done()
-            except queue.Empty:
-                break
 
     def action_toggle_dark(self) -> None:
         """Not used"""
         self.theme = "textual-dark" if self.theme == "textual-light" else "textual-light"
 
     def action_pause_resume(self) -> None:
+        # TODO: this is causing a crash. Debug with textual-dev
         self.manager.progress_manager.pause_or_resume()
 
     def action_toggle_logs(self) -> None:
@@ -121,6 +131,7 @@ class TextualUI(App[int]):
         """Extract cookies right now and apply them to the current session
 
         This is IO blocking. Not ideal but it works"""
+        return
 
         try:
             got_cookies = self.manager.client_manager.load_cookie_files()

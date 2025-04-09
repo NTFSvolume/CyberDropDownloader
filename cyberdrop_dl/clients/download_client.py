@@ -179,7 +179,7 @@ class DownloadClient:
         await asyncio.sleep(self.client_manager.download_delay)
 
         download_url = media_item.debrid_link or media_item.url
-        await self.manager.states.RUNNING.wait()
+        await self.manager.wait_running()
         async with client_session.get(
             download_url,
             headers=download_headers,
@@ -257,7 +257,7 @@ class DownloadClient:
 
         async with aiofiles.open(media_item.partial_file, mode="ab") as f:  # type: ignore
             async for chunk in content.iter_chunked(self.chunk_size):
-                await self.manager.states.RUNNING.wait()
+                await self.manager.wait_running()
                 await check_free_space()
                 chunk_size = len(chunk)
                 await self.client_manager.speed_limiter.acquire(chunk_size)

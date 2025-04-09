@@ -67,13 +67,13 @@ class Manager:
         self.task_list: list = []
         self.scrape_mapper: ScrapeMapper = field(init=False)
         self.current_task: asyncio.Task = field(init=False)
+        self.states: AsyncioEvents = AsyncioEvents()
 
         self.vi_mode: bool = False
         self.start_time: float = perf_counter()
         self.downloaded_data: int = 0
         self.multiconfig: bool = False
         self.loggers: dict[str, QueuedLogger] = {}
-        self.states = AsyncioEvents()
 
     def shutdown(self, from_user: bool = False):
         """ "Shut everything down (something failed or the user used ctrl + q)"""
@@ -296,10 +296,17 @@ class Manager:
         constants.DISABLE_CACHE = self.parsed_args.cli_only_args.disable_cache
 
     async def run(self):
+        self.states = AsyncioEvents()
         scrape_mapper = ScrapeMapper(self)
+        self.states.RUNNING.set()
         async with asyncio.TaskGroup() as task_group:
             self.task_group = task_group
             await scrape_mapper.start()
+
+    async def wait_running(self):
+        """Blocks until the manager is running. Thread safe"""
+        loop = asyncio.get_event_loop()
+        return await asyncio.wrap_future(asyncio.run_coroutine_threadsafe(self.states.RUNNING.wait(), loop))
 
 
 def get_system_information() -> str:
