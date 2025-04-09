@@ -89,8 +89,7 @@ class TextualLogQueueHandler(QueueHandler):
     """Auto queue and format the log record as a rich text before sending it to the queue"""
 
     def __init__(self, manager: Manager):
-        manager.textual_log_queue = q = queue.Queue()
-        super().__init__(q)
+        super().__init__(manager.textual_log_queue)
 
     def prepare(self, record: logging.LogRecord) -> Text:
         return create_rich_log_msg(record.getMessage(), record.levelno)

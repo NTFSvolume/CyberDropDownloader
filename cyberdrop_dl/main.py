@@ -17,9 +17,7 @@ from rich import print as rich_print
 from cyberdrop_dl import env
 from cyberdrop_dl.clients.errors import InvalidYamlError
 from cyberdrop_dl.managers.manager import Manager
-from cyberdrop_dl.scraper.scrape_mapper import ScrapeMapper
 from cyberdrop_dl.ui.program_ui import ProgramUI
-from cyberdrop_dl.ui.textual import textual_ui
 from cyberdrop_dl.utils import constants
 from cyberdrop_dl.utils.apprise import send_apprise_notifications
 from cyberdrop_dl.utils.dumper import Dumper
@@ -75,10 +73,10 @@ async def runtime(manager: Manager) -> None:
 
     manager.states.RUNNING.set()
     with manager.live_manager.get_main_live(stop=True):
-        scrape_mapper = ScrapeMapper(manager)
-        async with textual_ui(manager), asyncio.TaskGroup() as task_group:
-            manager.task_group = task_group
-            await scrape_mapper.start()
+        if manager.live_manager.use_textual:
+            await manager.app.run_async()
+        else:
+            await manager.run()
 
 
 async def post_runtime(manager: Manager) -> None:

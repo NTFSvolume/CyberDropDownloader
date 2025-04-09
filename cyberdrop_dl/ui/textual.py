@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import asyncio
-import contextlib
 import queue
 from typing import TYPE_CHECKING
 
@@ -53,9 +51,8 @@ class TextualUI(App[int]):
     def __init__(self, manager: Manager):
         super().__init__()
         self.manager = manager
-        self.queue: queue.Queue[Text] = manager.textual_log_queue
+        self.queue = manager.textual_log_queue = queue.Queue()
         self.auto_scroll = True
-        manager._textual_ui = self
 
     def compose(self) -> ComposeResult:
         def create_footer():
@@ -78,6 +75,7 @@ class TextualUI(App[int]):
         This is only for the main UI progress. Textual will compute the required refresh for its native stuff"""
         refresh_rate = self.manager.live_manager.refresh_rate
         self.set_interval(1 / refresh_rate, self.update_live)
+        self.run_worker(self.manager.run)
 
     def update_live(self) -> None:
         """Get the current layout from the manager's live and manually update the content in the main UI"""
@@ -189,20 +187,3 @@ class TextualUI(App[int]):
 
 class PortraitTextualUI(TextualUI):
     BINDINGS = PORTRAIT_BINDINGS  # type: ignore
-
-
-@contextlib.asynccontextmanager
-async def textual_ui(manager: Manager):
-    if manager.live_manager.use_textual:
-        UI = TextualUI
-        if manager.parsed_args.cli_only_args.portrait:
-            UI = PortraitTextualUI
-        textual_ui = UI(manager)
-        ui_task = asyncio.create_task(textual_ui.run_async())
-        try:
-            yield
-        finally:
-            textual_ui.exit()
-            await ui_task
-    else:
-        yield

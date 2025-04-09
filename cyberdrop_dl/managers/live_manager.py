@@ -26,7 +26,7 @@ class LiveManager:
         self.ui_setting = self.manager.parsed_args.cli_only_args.ui
         self.fullscreen = f = self.manager.parsed_args.cli_only_args.fullscreen_ui
         self.refresh_rate = rate = self.manager.config_manager.global_settings_data.ui_options.refresh_rate
-        self.use_textual = False  # manager.parsed_args.cli_only_args.textual_ui and self.fullscreen
+        self.use_textual = self.fullscreen and not manager.parsed_args.cli_only_args.no_textual_ui
         self.auto_refresh = a = not self.use_textual
         self.live = Live(refresh_per_second=rate, console=console, transient=True, screen=f, auto_refresh=a)
         self.current_layout: str = field(init=False)

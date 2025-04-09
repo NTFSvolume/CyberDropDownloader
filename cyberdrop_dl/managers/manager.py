@@ -5,7 +5,7 @@ import json
 import platform
 from dataclasses import Field, field
 from time import perf_counter
-from typing import TYPE_CHECKING, Literal, NamedTuple
+from typing import TYPE_CHECKING, NamedTuple
 
 from cyberdrop_dl import __version__
 from cyberdrop_dl.config_definitions import ConfigSettings, GlobalSettings
@@ -21,7 +21,8 @@ from cyberdrop_dl.managers.path_manager import PathManager
 from cyberdrop_dl.managers.progress_manager import ProgressManager
 from cyberdrop_dl.managers.realdebrid_manager import RealDebridManager
 from cyberdrop_dl.managers.storage_manager import StorageManager
-from cyberdrop_dl.ui.textual import TextualUI
+from cyberdrop_dl.scraper.scrape_mapper import ScrapeMapper
+from cyberdrop_dl.ui.textual import PortraitTextualUI, TextualUI
 from cyberdrop_dl.utils import constants
 from cyberdrop_dl.utils.args import ParsedArgs
 from cyberdrop_dl.utils.ffmpeg import FFmpeg
@@ -31,8 +32,6 @@ from cyberdrop_dl.utils.transfer import transfer_v5_db_to_v6
 if TYPE_CHECKING:
     import queue
     from asyncio import TaskGroup
-
-    from cyberdrop_dl.scraper.scrape_mapper import ScrapeMapper
 
 
 class AsyncioEvents(NamedTuple):
@@ -59,7 +58,7 @@ class Manager:
         self.live_manager: LiveManager = field(init=False)
         self.textual_log_queue: queue.Queue = field(init=False)
         self.ffmpeg: FFmpeg = field(init=False)
-        self._textual_ui: TextualUI = field(init=False)
+        self.app: TextualUI = field(init=False)
 
         self._loaded_args_config: bool = False
         self._made_portable: bool = False
@@ -104,20 +103,9 @@ class Manager:
         self.adjust_for_simpcity()
         if self.config_manager.loaded_config.casefold() == "all" or self.parsed_args.cli_only_args.multiconfig:
             self.multiconfig = True
+        UI = PortraitTextualUI if self.parsed_args.cli_only_args.portrait else TextualUI
+        self.app = UI(self)
         self.set_constants()
-
-    def notify(
-        self,
-        msg: str,
-        title: str = "",
-        severity: Literal["information", "warning", "error"] = "information",
-        timeout: float | None = None,
-    ):
-        """Wrapper around textual.app.notify
-
-        Does nothing if CDL is not using textual (`--no-textual-ui`)"""
-        if isinstance(self._textual_ui, TextualUI):
-            self._textual_ui.notify(msg, title=title, severity=severity, timeout=timeout)
 
     def adjust_for_simpcity(self) -> None:
         """Adjusts settings for SimpCity update."""
@@ -306,6 +294,12 @@ class Manager:
         rewrite constants after config/arg manager have loaded
         """
         constants.DISABLE_CACHE = self.parsed_args.cli_only_args.disable_cache
+
+    async def run(self):
+        scrape_mapper = ScrapeMapper(self)
+        async with asyncio.TaskGroup() as task_group:
+            self.task_group = task_group
+            await scrape_mapper.start()
 
 
 def get_system_information() -> str:
