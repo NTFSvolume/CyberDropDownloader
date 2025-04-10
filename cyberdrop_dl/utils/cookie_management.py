@@ -1,17 +1,16 @@
 from __future__ import annotations
 
 import asyncio
+import functools
 import os
 import socket
 import webbrowser
-from functools import wraps
 from http.cookiejar import MozillaCookieJar
 from textwrap import dedent
 from typing import TYPE_CHECKING
 
 import browser_cookie3
 from multidict import CIMultiDict
-from rich.console import Console
 
 from cyberdrop_dl.utils import constants
 
@@ -20,21 +19,19 @@ if TYPE_CHECKING:
 
     from cyberdrop_dl.managers.manager import Manager
 
-console = Console()
+
 COOKIE_ERROR_FOOTER = "\n\nNothing has been saved."
 CHROMIUM_BROWSERS = ["chrome", "chromium", "opera", "opera_gx", "brave", "edge", "vivaldi", "arc"]
 
 
-class UnsupportedBrowserError(browser_cookie3.BrowserCookieError):
-    pass
+class UnsupportedBrowserError(browser_cookie3.BrowserCookieError): ...
 
 
-def cookie_wrapper(func: Callable) -> Callable:
+def cookie_extraction_error_wrapper(func: Callable) -> Callable:
     """Wrapper handles errors for cookie extraction."""
 
-    @wraps(func)
+    @functools.wraps(func)
     def wrapper(*args, **kwargs) -> None:
-        msg = ""
         try:
             return func(*args, **kwargs)
         except PermissionError as e:
@@ -48,7 +45,6 @@ def cookie_wrapper(func: Callable) -> Callable:
         except browser_cookie3.BrowserCookieError as e:
             msg = """Browser extraction ran into an error, the selected browser(s) may not be available on your system
                      If you are still having issues, make sure all browsers processes are closed in Task Manager."""
-
             msg = dedent(msg) + f"\nERROR: {e!s}"
 
         raise browser_cookie3.BrowserCookieError(msg + COOKIE_ERROR_FOOTER)
@@ -56,11 +52,11 @@ def cookie_wrapper(func: Callable) -> Callable:
     return wrapper
 
 
-@cookie_wrapper
+@cookie_extraction_error_wrapper
 def get_cookies_from_browsers(
     manager: Manager, *, browsers: list[constants.BROWSERS] | list[str] | None = None, domains: list[str] | None = None
 ) -> None:
-    if not browsers and browsers is not None:
+    if browsers == []:
         msg = "No browser selected"
         raise ValueError(msg)
     if domains == []:
@@ -70,12 +66,20 @@ def get_cookies_from_browsers(
     browsers = browsers or manager.config_manager.settings_data.browser_cookies.browsers
     browsers = list(map(str.lower, browsers))
     domains = domains or manager.config_manager.settings_data.browser_cookies.sites
-    extractors = [(str(b), getattr(browser_cookie3, b)) for b in browsers if hasattr(browser_cookie3, b)]
+    extractors = [(b, getattr(browser_cookie3, b)) for b in browsers if hasattr(browser_cookie3, b)]
 
     if not extractors:
         msg = "None of the provided browsers is supported for extraction"
         raise ValueError(msg)
 
+    def check_unsupported_browser(error: browser_cookie3.BrowserCookieError, extractor_name: str) -> None:
+        msg = str(error)
+        is_decrypt_error = "Unable to get key for cookie decryption" in msg
+        if is_decrypt_error and extractor_name in CHROMIUM_BROWSERS and os.name == "nt":
+            msg = f"Cookie extraction from {extractor_name.capitalize()} is not supported on Windows. Use a Firefox based browser - {msg}"
+            raise UnsupportedBrowserError(msg)
+
+    manager.path_manager.cookies_dir.mkdir(parents=True, exist_ok=True)
     for domain in domains:
         cookie_jar = MozillaCookieJar()
         for extractor_name, extractor in extractors:
@@ -86,7 +90,6 @@ def get_cookies_from_browsers(
                 raise
             for cookie in cookies:
                 cookie_jar.set_cookie(cookie)
-            manager.path_manager.cookies_dir.mkdir(parents=True, exist_ok=True)
             cookie_file_path = manager.path_manager.cookies_dir / f"{domain}.txt"
         cookie_jar.save(cookie_file_path, ignore_discard=True, ignore_expires=True)  # type: ignore
 
@@ -95,29 +98,30 @@ def clear_cookies(manager: Manager, domains: list[str]) -> None:
     if domains == []:
         raise ValueError("No domains selected")
 
+    manager.path_manager.cookies_dir.mkdir(parents=True, exist_ok=True)
     for domain in domains:
         cookie_jar = MozillaCookieJar()
-        manager.path_manager.cookies_dir.mkdir(parents=True, exist_ok=True)
         cookie_file_path = manager.path_manager.cookies_dir / f"{domain}.txt"
         cookie_jar.save(cookie_file_path, ignore_discard=True, ignore_expires=True)  # type: ignore
 
 
-def check_unsupported_browser(error: browser_cookie3.BrowserCookieError, extractor_name: str) -> None:
-    msg = str(error)
-    is_decrypt_error = "Unable to get key for cookie decryption" in msg
-    if is_decrypt_error and extractor_name in CHROMIUM_BROWSERS and os.name == "nt":
-        msg = f"Cookie extraction from {extractor_name.capitalize()} is not supported on Windows. Use a Firefox based browser - {msg}"
-        raise UnsupportedBrowserError(msg)
-
-
 async def get_browser_user_agent(browser: str | None = None) -> str | None:
-    """Get User-Agent header from browser.
+    """Get User-Agent header from browser."""
 
-    If browser is `None`, the default browser in the OS will be used
-    or the specified browser is not available
-    If there any errors , returns `None`"""
+    try:
+        web_browser = webbrowser.get(browser)
+    except webbrowser.Error:
+        if not browser:
+            raise
+        msg = f"Unable to open browser '{browser}' (not installed or executable path not found)"
+        try:
+            available_browsers: list[str] | None = webbrowser._tryorder  # type: ignore
+            if available_browsers:
+                msg += f"\nInstalled browsers: {available_browsers}"
+        except AttributeError:
+            pass
+        raise webbrowser.Error(msg) from None
 
-    web_browser = webbrowser.get(browser)
     loop = asyncio.get_running_loop()
     server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)  # IPV4, TCP
     server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -151,7 +155,7 @@ async def get_browser_user_agent(browser: str | None = None) -> str | None:
     try:
         headers, _ = await get_headers_and_body(client)
         user_agent = headers["user-agent"]
-        date_str = f"<h2>Startup time:</h2> {constants.STARTUP_TIME.isoformat()}"
+        date_str = f"<h2>Startup time:</h2>{constants.STARTUP_TIME.isoformat()}"
         response_data += f"<p>{user_agent}</p><p>{date_str}</p></body></html>"
         await asyncio.to_thread(client.sendall, response_data.encode("utf-8"))
         return user_agent
