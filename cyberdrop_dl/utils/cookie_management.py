@@ -58,18 +58,18 @@ def cookie_wrapper(func: Callable) -> Callable:
 
 @cookie_wrapper
 def get_cookies_from_browsers(
-    manager: Manager, *, browsers: list[str] | None = None, domains: list[str] | None = None
+    manager: Manager, *, browsers: list[constants.BROWSERS] | list[str] | None = None, domains: list[str] | None = None
 ) -> None:
     if not browsers and browsers is not None:
         msg = "No browser selected"
         raise ValueError(msg)
-    if not domains and domains is not None:
+    if domains == []:
         msg = "No domains selected"
         raise ValueError(msg)
 
     browsers = browsers or manager.config_manager.settings_data.browser_cookies.browsers
     browsers = list(map(str.lower, browsers))
-    domains: list[str] = domains or manager.config_manager.settings_data.browser_cookies.sites
+    domains = domains or manager.config_manager.settings_data.browser_cookies.sites
     extractors = [(str(b), getattr(browser_cookie3, b)) for b in browsers if hasattr(browser_cookie3, b)]
 
     if not extractors:
@@ -88,18 +88,18 @@ def get_cookies_from_browsers(
                 cookie_jar.set_cookie(cookie)
             manager.path_manager.cookies_dir.mkdir(parents=True, exist_ok=True)
             cookie_file_path = manager.path_manager.cookies_dir / f"{domain}.txt"
-        cookie_jar.save(cookie_file_path, ignore_discard=True, ignore_expires=True)
+        cookie_jar.save(cookie_file_path, ignore_discard=True, ignore_expires=True)  # type: ignore
 
 
-def clear_cookies(manager: Manager, domains: list[str] | None = None) -> None:
-    if not domains and domains is not None:
+def clear_cookies(manager: Manager, domains: list[str]) -> None:
+    if domains == []:
         raise ValueError("No domains selected")
 
     for domain in domains:
         cookie_jar = MozillaCookieJar()
         manager.path_manager.cookies_dir.mkdir(parents=True, exist_ok=True)
         cookie_file_path = manager.path_manager.cookies_dir / f"{domain}.txt"
-        cookie_jar.save(cookie_file_path, ignore_discard=True, ignore_expires=True)
+        cookie_jar.save(cookie_file_path, ignore_discard=True, ignore_expires=True)  # type: ignore
 
 
 def check_unsupported_browser(error: browser_cookie3.BrowserCookieError, extractor_name: str) -> None:
