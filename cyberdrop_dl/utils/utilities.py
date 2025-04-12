@@ -51,7 +51,7 @@ TEXT_EDITORS = "micro", "nano", "vim"  # Ordered by preference
 subprocess_get_text = partial(subprocess.run, capture_output=True, text=True, check=False)
 
 
-def error_handling_wrapper(func: Callable) -> Callable:
+def error_handling_wrapper(func: Callable, *suppress: type[Exception], quiet: bool = False) -> Callable:
     """Wrapper handles errors for url scraping."""
 
     @wraps(func)
@@ -60,25 +60,47 @@ def error_handling_wrapper(func: Callable) -> Callable:
         link: URL = item if isinstance(item, URL) else item.url
         origin = exc_info = None
         link_to_show: URL | str = ""
+        nonlocal quiet
+
+        def should_suppress(obj: Exception | type[Exception]) -> bool:
+            if quiet:
+                return quiet
+            if not suppress:
+                return False
+            if obj in suppress:
+                return True
+            elif isinstance(obj, type) and any(issubclass(obj, p) for p in suppress):
+                return True  # Subclass
+            elif any(isinstance(obj, p) for p in suppress):
+                return True  # Instance
+
+            elif isinstance(type(obj), type) and any(issubclass(type(obj), p) for p in suppress):
+                return True  # Instance of subclass
+            else:
+                return False
+
         try:
             return await func(self, *args, **kwargs)
         except CDLBaseError as e:
+            quiet = should_suppress(e)
             error_log_msg = ErrorLogMessage(e.ui_failure, str(e))
             origin = e.origin
             e_url: URL | str | None = getattr(e, "url", None)
             link_to_show = e_url or link_to_show
-        except TimeoutError:
+        except TimeoutError as e:
+            quiet = should_suppress(e)
             error_log_msg = ErrorLogMessage("Timeout")
         except ClientConnectorError as e:
+            quiet = should_suppress(e)
             ui_failure = "Client Connector Error"
-            # link_to_show = link.with_host(e.host) # For bunkr and jpg5, to make sure the log message matches the actual URL we tried to connect
             log_msg = f"Can't connect to {link}. If you're using a VPN, try turning it off \n  {e!s}"
             error_log_msg = ErrorLogMessage(ui_failure, log_msg)
         except Exception as e:
+            quiet = should_suppress(e)
             exc_info = e
             error_log_msg = ErrorLogMessage.from_unknown_exc(e)
 
-        if getattr(item, "is_segment", False):
+        if getattr(item, "is_segment", False) or quiet:
             return
 
         link_to_show = link_to_show or link
