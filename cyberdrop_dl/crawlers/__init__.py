@@ -48,6 +48,7 @@ from .pimpandhost import PimpAndHostCrawler
 from .pixeldrain import PixelDrainCrawler
 from .pixhost import PixHostCrawler
 from .pmvhaven import PMVHavenCrawler
+from .pornhub import PornHubCrawler
 from .pornpics import PornPicsCrawler
 from .postimg import PostImgCrawler
 from .realbooru import RealBooruCrawler
