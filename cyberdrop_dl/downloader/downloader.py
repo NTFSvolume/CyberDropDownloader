@@ -6,7 +6,7 @@ from dataclasses import field
 from functools import wraps
 from http import HTTPStatus
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, ParamSpec, TypeVar
 
 from aiohttp import ClientConnectorError, ClientError, ClientResponseError
 from filedate import File
@@ -21,14 +21,16 @@ from cyberdrop_dl.clients.errors import (
 from cyberdrop_dl.utils.constants import CustomHTTPStatus
 from cyberdrop_dl.utils.data_enums_classes.url_objects import HlsSegment, MediaItem
 from cyberdrop_dl.utils.logger import log
-from cyberdrop_dl.utils.utilities import error_handling_wrapper
+from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_size_or_none
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Generator
+    from collections.abc import Callable, Coroutine, Generator
 
     from cyberdrop_dl.clients.download_client import DownloadClient
     from cyberdrop_dl.managers.manager import Manager
 
+P = ParamSpec("P")
+R = TypeVar("R")
 
 KNOWN_BAD_URLS = {
     "https://i.imgur.com/removed.png": 404,
@@ -40,15 +42,16 @@ KNOWN_BAD_URLS = {
 }
 
 
-def retry(func: Callable) -> Callable:
+def retry(func: Callable[P, Coroutine[None, None, R]]) -> Callable[P, Coroutine[None, None, R]]:
     """This function is a wrapper that handles retrying for failed downloads."""
 
     @wraps(func)
-    async def wrapper(self: Downloader, *args, **kwargs) -> Any:
-        media_item: MediaItem = args[0]
+    async def wrapper(*args, **kwargs) -> R:
+        self: Downloader = args[0]
+        media_item: MediaItem = args[1]
         while True:
             try:
-                return await func(self, *args, **kwargs)
+                return await func(*args, **kwargs)
             except DownloadError as e:
                 if not e.retry:
                     raise
@@ -287,8 +290,7 @@ class Downloader:
             ClientError,
         ) as e:
             ui_message = getattr(e, "status", type(e).__name__)
-            if media_item.partial_file and media_item.partial_file.is_file():
-                size = media_item.partial_file.stat().st_size
+            if size := await asyncio.to_thread(get_size_or_none, media_item.partial_file):
                 if (
                     media_item.filename in self._current_attempt_filesize
                     and self._current_attempt_filesize[media_item.filename] >= size
